@@ -380,6 +380,19 @@ else
   bad "Dock has no pinned apps" "$dock_pinned still pinned"
 fi
 
+if defaults read -g AppleInterfaceStyle 2>/dev/null | grep -qi dark; then
+  ok "Dark mode enabled"
+else
+  bad "Dark mode enabled" "AppleInterfaceStyle is not Dark"
+fi
+
+icon_theme=$(defaults read -g AppleIconAppearanceTheme 2>/dev/null || true)
+if [[ -n "$icon_theme" ]]; then
+  ok "Icon appearance theme" "$icon_theme"
+else
+  warn "Icon appearance theme" "unset — needs macOS 26 or later"
+fi
+
 # --- summary -----------------------------------------------------------------
 printf "\n%s────────────────────────────────────────%s\n" "$B" "$N"
 printf "  %spassed: %d%s   %swarnings: %d%s   %sfailed: %d%s\n" \

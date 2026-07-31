@@ -3,10 +3,18 @@
 # matter how many tasks notified. That is exactly what you want for a restart:
 # no notify, no restart.
 
+# Split into three rather than one "killall Dock Finder SystemUIServer" so a
+# task can restart only what it touched. Handlers fire once each, at the end of
+# the play, in the order defined below — so nothing gets killed twice.
+
 - name: Restart Dock
   command: killall Dock
   failed_when: false
 
 - name: Restart Finder
   command: killall Finder
+  failed_when: false
+
+- name: Restart SystemUIServer
+  command: killall SystemUIServer
   failed_when: false

@@ -117,6 +117,9 @@ merged, not overwritten, and the previous file is kept as a `.bak`.
 ### System (runs last)
 - Clears every pinned app from the Dock
 - Applies any macOS defaults listed in `system_defaults` (empty by default)
+- Dark mode (`AppleInterfaceStyle`)
+- Dark app icons (`AppleIconAppearanceTheme = RegularDark`, macOS 26+)
+- Restarts Dock, Finder and SystemUIServer — only when something changed
 
 This role runs **last** because it restarts Dock and Finder — everything else
 should be installed and settled first. Restarts go through Ansible handlers, so

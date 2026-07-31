@@ -96,6 +96,12 @@ vscode_theme_settings:
 # Downloads/Trash side. Runs only when the Dock actually has pinned apps.
 system_dock_clear_persistent_apps: true
 
+# Appearance — applied at the very end of the system role.
+system_dark_mode: true
+# Dark app icons. Set to "" to leave the icon theme alone.
+# Other values: Regular, RegularDark, Clear, ClearDark, Tinted, TintedDark
+system_icon_appearance_theme: "RegularDark"
+
 # Free-form macOS defaults. Each entry maps straight onto the osx_defaults
 # module, which reads the current value first — so re-running changes nothing
 # and Dock/Finder are not restarted for no reason.

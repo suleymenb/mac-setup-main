@@ -52,3 +52,52 @@
   notify:
     - Restart Dock
     - Restart Finder
+
+# --- appearance (last) -------------------------------------------------------
+# Deliberately the final block in the role, and the role itself runs last.
+
+- name: Set the icon appearance theme
+  community.general.osx_defaults:
+    domain: NSGlobalDomain
+    key: AppleIconAppearanceTheme
+    type: string
+    value: "{{ system_icon_appearance_theme }}"
+    state: present
+  when: system_icon_appearance_theme | default('') | length > 0
+  notify:
+    - Restart Dock
+    - Restart Finder
+    - Restart SystemUIServer
+
+# Writing AppleInterfaceStyle needs no special permission and is what actually
+# persists across logins.
+- name: Enable dark mode
+  community.general.osx_defaults:
+    domain: NSGlobalDomain
+    key: AppleInterfaceStyle
+    type: string
+    value: Dark
+    state: present
+  when: system_dark_mode | default(false)
+  register: dark_mode
+  notify:
+    - Restart Dock
+    - Restart Finder
+    - Restart SystemUIServer
+
+# The AppleScript route asks System Events for macOS Automation permission,
+# which nobody can grant during a non-interactive run — it then blocks until
+# the AppleEvent times out after two minutes (-1712). It is kept only because
+# it flips the *running* session to dark without a logout, but it is capped at
+# 15 seconds and can never fail the play. The defaults write above is the part
+# that counts.
+- name: Apply dark mode to the current session
+  command: >-
+    osascript -e 'tell application "System Events" to tell appearance preferences
+    to set dark mode to true'
+  changed_when: false
+  failed_when: false
+  timeout: 15
+  when:
+    - system_dark_mode | default(false)
+    - dark_mode is changed
