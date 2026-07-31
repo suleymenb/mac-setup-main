@@ -17,10 +17,13 @@
     state: present
     update_homebrew: false
 
+# The "_absent" lists may be empty or commented out entirely — default([])
+# keeps that from blowing up with an undefined-variable error.
 - name: Remove formulae that are no longer wanted
   community.general.homebrew:
-    name: "{{ brew_formulae_absent }}"
+    name: "{{ brew_formulae_absent | default([]) }}"
     state: absent
+  when: (brew_formulae_absent | default([])) | length > 0
 
 - name: Install brew casks
   community.general.homebrew_cask:
@@ -31,5 +34,5 @@
   community.general.homebrew_cask:
     name: "{{ item }}"
     state: absent
-  loop: "{{ brew_casks_absent }}"
+  loop: "{{ brew_casks_absent | default([]) }}"
   failed_when: false
