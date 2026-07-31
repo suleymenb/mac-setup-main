@@ -3,29 +3,21 @@
 Reproducible macOS setup with Ansible. Installs Homebrew, dev tooling, apps and
 shell config, and applies a few system settings. Safe to re-run.
 
+Tested on macOS 15 and 26, Apple Silicon and Intel. Takes roughly 15 minutes on
+a fresh machine.
+
+## Prerequisites
+
+Xcode Command Line Tools. Check with `xcode-select -p` — it should print
+`/Library/Developer/CommandLineTools`. If not:
+
+```bash
+xcode-select --install
+```
+
+Wait for it to finish before continuing. Everything else is installed for you.
+
 ## Quick start
-
-Fresh machine, one command:
-
-If Command Line Tools are not installed, run:
-
-```
-sudo touch /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress && sudo softwareupdate --install --recommended
-```
-
-Wait until installation completes before continuing.
-
-Verify installation:
-
-```
-xcode-select -p
-```
-
-It should return:
-
-/Library/Developer/CommandLineTools
-
----
 
 ```bash
 cd ~ && git clone https://github.com/suleymenb/mac-setup-main.git && cd mac-setup-main && chmod +x bootstrap/bootstrap.sh verify.sh && ./bootstrap/bootstrap.sh
@@ -36,13 +28,8 @@ inside an existing copy nests the repo in itself; `bootstrap.sh` refuses to run
 if it detects that.
 
 `bootstrap.sh` installs Homebrew, pipx and ansible-core, runs the playbook, then
-runs `verify.sh`.
-
-**Requirement:** Xcode Command Line Tools. If `xcode-select -p` returns nothing:
-
-```bash
-xcode-select --install
-```
+runs `verify.sh`. Log out once afterwards so dark mode and scroll direction
+reach every app.
 
 ## What it installs
 
@@ -56,15 +43,47 @@ xcode-select --install
 | **Fonts** | JetBrains Mono, Meslo LG Nerd Font |
 | **Shell** | Oh My Zsh, powerlevel10k, autosuggestions, syntax-highlighting |
 | **VS Code** | The Digital Life theme, Material Icon Theme (both activated) |
-| **System** | Clears the Dock, dark mode, dark app icons |
+| **System** | Clears the Dock, dark mode, dark app icons, natural scrolling off |
 
 Aliases: `rz` (reload zshrc), `ls`/`ll` (eza), `k` (kubectl), plus kubectl completion.
+
+## What it does not do
+
+No dotfiles sync, no SSH or GPG keys, no App Store apps, no Time Machine or
+FileVault. macOS settings are limited to what is listed above plus anything you
+add to `system_defaults` yourself.
 
 ## Customising
 
 **Edit `group_vars/all.yml`. Nothing else.** The roles install from those lists,
 preflight validates them, and `verify.sh` reads the same file — so they cannot
 drift apart.
+
+Adding `jq`:
+
+```yaml
+brew_formulae:
+  - eza
+  - dust
+  - jq        # <- add here
+```
+
+```bash
+ansible-playbook playbook.yml --tags homebrew
+```
+
+Preflight checks the name exists before anything installs, and `verify.sh`
+starts checking it automatically.
+
+Adding a macOS setting:
+
+```yaml
+system_defaults:
+  - domain: com.apple.dock
+    key: autohide
+    type: bool
+    value: true
+```
 
 Lists ending in `_optional` are best-effort: if Homebrew renames or moves a
 package, the run logs `Skipped ...` and continues.
@@ -106,8 +125,31 @@ Re-run just the failed ones, for example:
   ansible-playbook playbook.yml --tags terraform,docker
 ```
 
-**`verify.sh`** checks every installed item independently of Ansible and prints
-PASS / WARN / FAIL per item. Exits non-zero on failure, so it works in CI.
+**`verify.sh`** checks everything independently of Ansible:
+
+```
+mac-setup verification  —  2026-08-01 15:32
+
+— Terraform —
+  ✔ hashicorp/tap tapped
+  ✔ terraform (brew)                   terraform 1.15.8
+  ✔ terraform binary                   Terraform v1.15.8
+  ! tflint                             optional — brew install terraform-linters/tap/tflint
+
+— Kubernetes —
+  ✔ kubernetes-cli (kubectl)           kubernetes-cli 1.36.2
+  ✔ helm                               helm 3.19.1
+
+— System —
+  ✔ Dock has no pinned apps
+  ✔ Dark mode enabled
+  ✔ Natural scrolling off
+
+────────────────────────────────────────
+  passed: 61   warnings: 3   failed: 0
+```
+
+Exits non-zero on failure, so it works in CI too.
 
 ## Troubleshooting
 
@@ -122,10 +164,10 @@ sudo -v && ansible-playbook playbook.yml
 `-K` does not work here — it does not populate `ansible_become_password` for
 this module.
 
-**Dark mode does not apply to open apps**
-The setting is written to `AppleInterfaceStyle` and persists. Running apps pick
-it up after a logout. The AppleScript alternative needs macOS Automation
-permission and hangs without it, so it is off by default
+**Dark mode or scroll direction did not change**
+Both are written as preferences and persist, but running apps only pick them up
+after a logout. For dark mode the AppleScript alternative applies instantly, but
+needs macOS Automation permission and hangs without it, so it is off by default
 (`system_dark_mode_live_apply`).
 
 **`terraform: command not found` after a successful run**
@@ -139,6 +181,28 @@ eval "$(/opt/homebrew/bin/brew shellenv)"
 **Homebrew asks for confirmation**
 Expected. Confirm when prompted; you are also asked for your macOS password once
 because Homebrew needs sudo to create `/opt/homebrew`.
+
+## Undoing things
+
+```bash
+brew uninstall <formula>              # or: brew uninstall --cask <cask>
+brew list --formula                   # what is installed
+```
+
+Everything this playbook wrote to `~/.zshrc` sits between markers, so it is easy
+to find and delete:
+
+```
+# BEGIN ANSIBLE_ALIASES ... # END ANSIBLE_ALIASES
+# BEGIN ANSIBLE_OMZ_SETTINGS, ANSIBLE_KUBECTL, ANSIBLE_BREW_AUToupdates
+```
+
+VS Code settings: restore the `settings.json.*.bak` next to the original.
+macOS settings: `defaults delete -g <key>`, for example
+`defaults delete -g com.apple.swipescrolldirection`.
+
+Remove a package permanently by deleting it from `group_vars/all.yml`, then
+moving it to the matching `_absent` list so future runs uninstall it too.
 
 ## Layout
 
@@ -159,12 +223,13 @@ roles/
 
 ## Notes
 
-- macOS system settings live in `system_defaults` in `group_vars/all.yml`.
-  Find a domain and key by changing the setting in System Settings and diffing
-  `defaults read` before and after.
+- Find the domain and key of any macOS setting by changing it in System Settings
+  and diffing `defaults read` before and after.
 - Terraform is not in homebrew-core (Business Source License); it comes from
   `hashicorp/tap`. tflint likewise lives in `terraform-linters/tap`.
 - Restarts are Ansible handlers, so a second run restarts nothing.
+- `AppleIconAppearanceTheme` (dark app icons) needs macOS 26 or later; on older
+  versions it is simply ignored.
 
 ## To do
 

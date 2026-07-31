@@ -386,6 +386,13 @@ else
   bad "Dark mode enabled" "AppleInterfaceStyle is not Dark"
 fi
 
+scroll_dir=$(defaults read -g com.apple.swipescrolldirection 2>/dev/null || echo 1)
+if [[ "$scroll_dir" == "0" ]]; then
+  ok "Natural scrolling off"
+else
+  bad "Natural scrolling off" "swipescrolldirection=$scroll_dir (expected 0)"
+fi
+
 icon_theme=$(defaults read -g AppleIconAppearanceTheme 2>/dev/null || true)
 if [[ -n "$icon_theme" ]]; then
   ok "Icon appearance theme" "$icon_theme"

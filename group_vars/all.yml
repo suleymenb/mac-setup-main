@@ -115,7 +115,15 @@ system_icon_appearance_theme: "RegularDark"
 #
 # Find the domain and key of any setting by changing it in System Settings and
 # running:  defaults read > after.txt   and diffing against a before.txt
-system_defaults: []
+system_defaults:
+  # Turn OFF natural scrolling (content follows the finger). false = classic,
+  # the scrollbar follows the finger instead. Takes effect after logout.
+  - domain: NSGlobalDomain
+    key: com.apple.swipescrolldirection
+    type: bool
+    value: false
+
+  # More examples — uncomment what you want:
   # - domain: com.apple.dock
   #   key: autohide
   #   type: bool
@@ -128,7 +136,3 @@ system_defaults: []
   #   key: AppleShowAllFiles
   #   type: bool
   #   value: true
-  # - domain: NSGlobalDomain
-  #   key: AppleInterfaceStyle
-  #   type: string
-  #   value: Dark
