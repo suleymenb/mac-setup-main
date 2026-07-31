@@ -208,25 +208,14 @@ You can customize your setup by editing:
 
 ## Troubleshooting
 
-### Homebrew keeps asking for confirmation
+### Homebrew asks for confirmation during the run
 
-Recent Homebrew versions default to **ask mode**, so `brew install` stops at
-`Do you want to proceed with the installation? [y/n]` whenever a formula pulls
-in dependencies. These are two *different* prompts with two *different* fixes:
+This is expected. The setup runs interactively: Homebrew asks you to press
+RETURN once when it installs itself, and may ask `[y/n]` before installing
+formulae that pull in dependencies. Just confirm when prompted.
 
-| Prompt | Comes from | Fix |
-| --- | --- | --- |
-| `Press RETURN/ENTER to continue` | Homebrew installer script | `NONINTERACTIVE=1` |
-| `Do you want to proceed with the installation? [y/n]` | `brew install` / `brew upgrade` | `HOMEBREW_NO_ASK=1` |
-
-`NONINTERACTIVE=1` does **not** silence the second one — that catches a lot of
-people out. Both are now set in `bootstrap.sh` and as a play-level
-`environment:` block in `playbook.yml`, so the whole run is unattended.
-
-For one-off manual installs you can also use `brew install -y <formula>`.
-
-You will still be asked for your macOS password once on a fresh machine, because
-Homebrew needs `sudo` to create `/opt/homebrew`. That one is unavoidable.
+You are also asked for your macOS password once on a fresh machine, because
+Homebrew needs `sudo` to create `/opt/homebrew`.
 
 ---
 

@@ -7,19 +7,6 @@
 
 set -euo pipefail
 
-# --- Non-interactive defaults ------------------------------------------------
-# NONINTERACTIVE   -> skips the "Press RETURN/ENTER to continue" prompt in the
-#                     Homebrew *installer script* only.
-# HOMEBREW_NO_ASK  -> skips "Do you want to proceed with the installation? [y/n]"
-#                     for `brew install` / `brew upgrade`. NONINTERACTIVE does
-#                     NOT cover this; it is a separate, newer prompt.
-# The rest just keep output quiet and avoid slow implicit updates.
-export NONINTERACTIVE=1
-export HOMEBREW_NO_ASK=1
-export HOMEBREW_NO_AUTO_UPDATE=1
-export HOMEBREW_NO_INSTALL_CLEANUP=1
-export HOMEBREW_NO_ENV_HINTS=1
-
 log() { printf "\n==> %s\n" "$1"; }
 
 # --- 0) Xcode Command Line Tools ---
@@ -33,10 +20,8 @@ fi
 # --- 1) Homebrew ---
 log "Checking Homebrew"
 if ! command -v brew >/dev/null 2>&1; then
-  log "Installing Homebrew (non-interactive)"
-  log "You may be asked for your macOS password once — Homebrew needs sudo to create /opt/homebrew."
-  NONINTERACTIVE=1 /bin/bash -c \
-    "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  log "Installing Homebrew"
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 fi
 
 # --- 2) Configure Brew PATH (Apple Silicon vs Intel) ---
@@ -63,7 +48,7 @@ eval "$BREW_SHELLENV_LINE"
 
 # --- 3) pipx + ansible-core ---
 log "Installing pipx"
-brew install --quiet pipx
+brew install pipx
 pipx ensurepath || true
 
 # Ensure current session PATH includes pipx binaries
