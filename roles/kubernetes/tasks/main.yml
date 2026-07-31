@@ -41,6 +41,8 @@
 
 - name: Verify kubectl is runnable
   command: kubectl version --client
+  environment:
+    PATH: "/opt/homebrew/bin:/usr/local/bin:{{ ansible_env.PATH }}"
   register: kubectl_version
   changed_when: false
   failed_when: false

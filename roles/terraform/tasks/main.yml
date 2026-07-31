@@ -52,10 +52,23 @@
     state: present
     update_homebrew: false
 
-- name: Verify terraform is on PATH and runnable
+# Ansible's command module does not go through a shell, so it only sees the
+# PATH it inherited. On a fresh machine that PATH has no /opt/homebrew/bin yet,
+# which makes a perfectly installed terraform look missing.
+- name: Verify terraform is runnable
   command: terraform version
+  environment:
+    PATH: "/opt/homebrew/bin:/usr/local/bin:{{ ansible_env.PATH }}"
   register: terraform_version
   changed_when: false
+  failed_when: false
+
+- name: Fail with a useful message if terraform is not runnable
+  fail:
+    msg: >-
+      terraform is installed but not reachable on PATH. Open a new terminal, or
+      run:  eval "$(/opt/homebrew/bin/brew shellenv)"  and try again.
+  when: terraform_version.rc != 0
 
 - name: Show terraform version
   debug:

@@ -5,6 +5,14 @@
 
 set -uo pipefail
 
+# A freshly installed Homebrew is not on PATH until a new login shell starts.
+# Add its bin dirs here so we test what is actually installed, not what this
+# particular shell happens to see.
+for d in /opt/homebrew/bin /usr/local/bin; do
+  [[ -d "$d" && ":$PATH:" != *":$d:"* ]] && PATH="$d:$PATH"
+done
+export PATH
+
 PASS=0
 FAIL=0
 WARN=0

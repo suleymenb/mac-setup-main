@@ -57,6 +57,8 @@
 
 - name: Check whether the docker CLI is available
   command: docker --version
+  environment:
+    PATH: "/opt/homebrew/bin:/usr/local/bin:{{ ansible_env.PATH }}"
   register: docker_cli
   changed_when: false
   failed_when: false
