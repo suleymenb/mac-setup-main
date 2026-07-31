@@ -98,6 +98,13 @@ system_dock_clear_persistent_apps: true
 
 # Appearance — applied at the very end of the system role.
 system_dark_mode: true
+
+# Also flip the *running* session via AppleScript. Leave this false unless you
+# have granted your terminal Automation permission under
+# System Settings > Privacy & Security > Automation. Without it the AppleEvent
+# hangs. Dark mode itself works fine without this — it just needs a logout to
+# reach already-running apps.
+system_dark_mode_live_apply: false
 # Dark app icons. Set to "" to leave the icon theme alone.
 # Other values: Regular, RegularDark, Clear, ClearDark, Tinted, TintedDark
 system_icon_appearance_theme: "RegularDark"
