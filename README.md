@@ -79,7 +79,14 @@ This will:
 - iTerm2
 - Rectangle
 - Stats
-- Zed
+- Visual Studio Code (incl. the `code` CLI)
+
+### VS Code Extensions
+- The Digital Life theme (`xcad2k.vscode-thedigitallife`) — set as color theme
+- Material Icon Theme (`PKief.material-icon-theme`) — set as file icon theme
+
+Both are activated automatically in `settings.json`. Existing settings are
+merged, not overwritten, and the previous file is kept as a `.bak`.
 
 ### CLI Tools
 - eza

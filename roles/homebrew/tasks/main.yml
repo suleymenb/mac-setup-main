@@ -31,7 +31,14 @@
       - iterm2
       - rectangle
       - stats
-      - zed
+      - visual-studio-code
       - font-jetbrains-mono
       - font-meslo-lg-nerd-font
     state: present
+
+- name: Remove the Zed editor (replaced by VS Code)
+  community.general.homebrew_cask:
+    name: zed
+    state: absent
+  register: zed_removed
+  failed_when: false

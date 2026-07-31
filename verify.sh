@@ -228,15 +228,48 @@ section "Applications"
 check_cask iterm2
 check_cask rectangle
 check_cask stats
-check_cask zed
+check_cask visual-studio-code "Visual Studio Code"
 
-for app in iTerm Rectangle Stats Zed; do
+# zed was dropped in favour of VS Code
+if brew list --cask --versions zed >/dev/null 2>&1; then
+  warn "zed removed" "still installed — run: brew uninstall --cask zed"
+elif [[ -d "/Applications/Zed.app" ]]; then
+  warn "zed removed" "Zed.app still in /Applications"
+else
+  ok "zed removed"
+fi
+
+# App bundle names differ from cask tokens, hence the explicit list
+for app in "iTerm" "Rectangle" "Stats" "Visual Studio Code"; do
   if [[ -d "/Applications/${app}.app" ]]; then
     ok "${app}.app present"
   else
     warn "${app}.app present" "not in /Applications"
   fi
 done
+
+check_cmd "code CLI" code --version
+
+if command -v code >/dev/null 2>&1; then
+  installed_ext=$(code --list-extensions 2>/dev/null)
+  for ext in xcad2k.vscode-thedigitallife PKief.material-icon-theme; do
+    if grep -qix "$ext" <<<"$installed_ext"; then
+      ok "ext $ext"
+    else
+      bad "ext $ext" "not installed"
+    fi
+  done
+
+  vscode_settings="$HOME/Library/Application Support/Code/User/settings.json"
+  if [[ -f "$vscode_settings" ]]; then
+    grep -q '"The Digital Life"' "$vscode_settings" \
+      && ok "colorTheme set" || bad "colorTheme set" "not in settings.json"
+    grep -q '"material-icon-theme"' "$vscode_settings" \
+      && ok "iconTheme set" || bad "iconTheme set" "not in settings.json"
+  else
+    bad "VS Code settings.json" "missing"
+  fi
+fi
 
 # --- fonts -------------------------------------------------------------------
 section "Fonts"

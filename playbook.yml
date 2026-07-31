@@ -25,6 +25,8 @@
       tags: [docker]
     - role: kubernetes
       tags: [kubernetes]
+    - role: vscode
+      tags: [vscode]
     - role: zsh
       tags: [zsh]
     - role: system
