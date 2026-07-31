@@ -113,9 +113,10 @@ merged, not overwritten, and the previous file is kept as a `.bak`.
   - `k` - kubectl
 - kubectl shell completion
 
-### System Customization
-- Dark mode enablement
-- Finder hidden files visibility
+### Not managed here
+macOS system settings (dark mode, Finder preferences, Dock, etc.) are
+deliberately left out — those are quicker to set by hand in System Settings
+than to automate, and automating them runs into macOS permission prompts.
 - Brew auto-updates
 
 ---
@@ -123,7 +124,7 @@ merged, not overwritten, and the previous file is kept as a `.bak`.
 ## 4. Project Structure
 
 ```
-mac-setup/
+mac-setup-main/
 ├── bootstrap/
 │   └── bootstrap.sh          # Initial setup script
 ├── roles/
@@ -131,8 +132,8 @@ mac-setup/
 │   ├── terraform/tasks/main.yml   # HashiCorp tap, terraform, tflint
 │   ├── docker/tasks/main.yml      # Docker Desktop + CLI tooling
 │   ├── kubernetes/tasks/main.yml  # kubectl, helm, k9s, minikube
-│   ├── zsh/tasks/main.yml         # Oh My Zsh, theme, plugins, aliases
-│   └── system/tasks/main.yml      # macOS system customization
+│   ├── vscode/tasks/main.yml      # VS Code extensions + theme settings
+│   └── zsh/tasks/main.yml         # Oh My Zsh, theme, plugins, aliases
 ├── verify.sh                 # Post-run health check
 ├── playbook.yml              # Main Ansible playbook
 ├── inventory.ini             # Ansible inventory
@@ -178,8 +179,8 @@ ansible-playbook playbook.yml --tags homebrew
 ansible-playbook playbook.yml --tags terraform
 ansible-playbook playbook.yml --tags docker
 ansible-playbook playbook.yml --tags kubernetes
+ansible-playbook playbook.yml --tags vscode
 ansible-playbook playbook.yml --tags zsh
-ansible-playbook playbook.yml --tags system
 ```
 
 Lint the playbook before committing:
@@ -195,7 +196,7 @@ ansible-lint
 - **Idempotent configuration** - Safe to run multiple times
 - **Reproducible environment** - Same setup every time
 - **Infrastructure-as-Code approach** - Everything is version controlled
-- **Clean separation of concerns** - Organized by role (homebrew, zsh, system)
+- **Clean separation of concerns** - Organized by role (homebrew, terraform, docker, kubernetes, vscode, zsh)
 - **Version-controlled system setup** - Track all changes in git
 
 This repository serves as a reproducible macOS baseline for development environments.
@@ -207,8 +208,8 @@ This repository serves as a reproducible macOS baseline for development environm
 You can customize your setup by editing:
 
 - `roles/homebrew/tasks/main.yml` - Add/remove packages and casks
-- `roles/zsh/tasks/main.yml` - Modify shell configuration, aliases, and cargo tools
-- `roles/system/tasks/main.yml` - Add more macOS system customizations
+- `roles/vscode/tasks/main.yml` - Add VS Code extensions or settings
+- `roles/zsh/tasks/main.yml` - Modify shell configuration and aliases
 - `playbook.yml` - Include/exclude roles
 
 ---

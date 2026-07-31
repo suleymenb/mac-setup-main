@@ -29,5 +29,3 @@
       tags: [vscode]
     - role: zsh
       tags: [zsh]
-    - role: system
-      tags: [system]

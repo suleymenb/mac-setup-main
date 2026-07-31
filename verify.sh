@@ -79,16 +79,6 @@ check_zshrc() {
   fi
 }
 
-check_default() {
-  local label="$1" domain="$2" key="$3" expect="$4"
-  local actual
-  actual=$(defaults read "$domain" "$key" 2>/dev/null)
-  if [[ "$actual" == "$expect" ]]; then
-    ok "$label" "$key=$actual"
-  else
-    bad "$label" "$key=${actual:-<unset>} (expected $expect)"
-  fi
-}
 
 printf "%smac-setup verification%s  —  %s\n" "$B" "$N" "$(date '+%Y-%m-%d %H:%M')"
 
@@ -339,16 +329,7 @@ if command -v zsh >/dev/null 2>&1; then
   fi
 fi
 
-# --- system settings ---------------------------------------------------------
-section "System settings"
-
-check_default "Finder shows hidden files" com.apple.finder AppleShowAllFiles 1
-
-if defaults read -g AppleInterfaceStyle 2>/dev/null | grep -qi dark; then
-  ok "Dark mode enabled"
-else
-  bad "Dark mode enabled" "AppleInterfaceStyle is not Dark"
-fi
+# macOS system settings (dark mode, Finder) are managed manually, not here.
 
 # --- summary -----------------------------------------------------------------
 printf "\n%s────────────────────────────────────────%s\n" "$B" "$N"
