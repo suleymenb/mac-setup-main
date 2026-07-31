@@ -7,6 +7,26 @@ shell config, and applies a few system settings. Safe to re-run.
 
 Fresh machine, one command:
 
+If Command Line Tools are not installed, run:
+
+```
+sudo touch /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress && sudo softwareupdate --install --recommended
+```
+
+Wait until installation completes before continuing.
+
+Verify installation:
+
+```
+xcode-select -p
+```
+
+It should return:
+
+/Library/Developer/CommandLineTools
+
+---
+
 ```bash
 cd ~ && git clone https://github.com/suleymenb/mac-setup-main.git && cd mac-setup-main && chmod +x bootstrap/bootstrap.sh verify.sh && ./bootstrap/bootstrap.sh
 ```
@@ -26,8 +46,6 @@ xcode-select --install
 
 ## What it installs
 
-| | |
-|---|---|
 | **CLI** | eza, dust, vim, mc, ansible-lint |
 | **Infra** | terraform (`hashicorp/tap`), terraform-docs, tflint |
 | **Containers** | Docker Desktop, docker-compose, lazydocker, dive |
