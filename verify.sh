@@ -370,7 +370,15 @@ if command -v zsh >/dev/null 2>&1; then
   fi
 fi
 
-# macOS system settings (dark mode, Finder) are managed manually, not here.
+# --- system ------------------------------------------------------------------
+section "System"
+
+dock_pinned=$(defaults read com.apple.dock persistent-apps 2>/dev/null | grep -c 'tile-data' || true)
+if [[ "$dock_pinned" -eq 0 ]]; then
+  ok "Dock has no pinned apps"
+else
+  bad "Dock has no pinned apps" "$dock_pinned still pinned"
+fi
 
 # --- summary -----------------------------------------------------------------
 printf "\n%s────────────────────────────────────────%s\n" "$B" "$N"

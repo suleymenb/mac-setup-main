@@ -87,3 +87,35 @@ vscode_extensions:
 vscode_theme_settings:
   workbench.colorTheme: "The Digital Life"
   workbench.iconTheme: "material-icon-theme"
+
+# --- system settings ---------------------------------------------------------
+# Applied by the system role, which always runs LAST because it restarts
+# Dock and Finder.
+
+# Strips every pinned app from the Dock, leaving only running apps and the
+# Downloads/Trash side. Runs only when the Dock actually has pinned apps.
+system_dock_clear_persistent_apps: true
+
+# Free-form macOS defaults. Each entry maps straight onto the osx_defaults
+# module, which reads the current value first — so re-running changes nothing
+# and Dock/Finder are not restarted for no reason.
+#
+# Find the domain and key of any setting by changing it in System Settings and
+# running:  defaults read > after.txt   and diffing against a before.txt
+system_defaults: []
+  # - domain: com.apple.dock
+  #   key: autohide
+  #   type: bool
+  #   value: true
+  # - domain: com.apple.dock
+  #   key: tilesize
+  #   type: int
+  #   value: 48
+  # - domain: com.apple.finder
+  #   key: AppleShowAllFiles
+  #   type: bool
+  #   value: true
+  # - domain: NSGlobalDomain
+  #   key: AppleInterfaceStyle
+  #   type: string
+  #   value: Dark

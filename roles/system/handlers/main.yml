@@ -1,0 +1,12 @@
+---
+# Handlers only run when a task notifies them, and only once per play no
+# matter how many tasks notified. That is exactly what you want for a restart:
+# no notify, no restart.
+
+- name: Restart Dock
+  command: killall Dock
+  failed_when: false
+
+- name: Restart Finder
+  command: killall Finder
+  failed_when: false

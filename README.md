@@ -112,12 +112,24 @@ merged, not overwritten, and the previous file is kept as a `.bak`.
   - `ll` - eza long format with all files and icons
   - `k` - kubectl
 - kubectl shell completion
-
-### Not managed here
-macOS system settings (dark mode, Finder preferences, Dock, etc.) are
-deliberately left out — those are quicker to set by hand in System Settings
-than to automate, and automating them runs into macOS permission prompts.
 - Brew auto-updates
+
+### System (runs last)
+- Clears every pinned app from the Dock
+- Applies any macOS defaults listed in `system_defaults` (empty by default)
+
+This role runs **last** because it restarts Dock and Finder — everything else
+should be installed and settled first. Restarts go through Ansible handlers, so
+they only fire when a setting actually changed. A second run restarts nothing.
+
+To add a setting, put it in `system_defaults` in `group_vars/all.yml`; the file
+has commented examples for Dock autohide, icon size, Finder hidden files and
+dark mode. To find the domain and key of any setting, change it in System
+Settings and diff `defaults read` before and after.
+
+Note that some settings (anything driven through System Events / AppleScript)
+need macOS Automation permission and will hang under Ansible. The `osx_defaults`
+module writes the preference directly and avoids that entirely.
 
 ---
 
@@ -136,7 +148,10 @@ mac-setup-main/
 │   ├── docker/tasks/main.yml      # Docker Desktop + CLI tooling
 │   ├── kubernetes/tasks/main.yml  # kubectl, helm, k9s, minikube
 │   ├── vscode/tasks/main.yml      # VS Code extensions + theme settings
-│   └── zsh/tasks/main.yml         # Oh My Zsh, theme, plugins, aliases
+│   ├── zsh/tasks/main.yml         # Oh My Zsh, theme, plugins, aliases
+│   └── system/                    # Dock + macOS defaults — RUNS LAST
+│       ├── tasks/main.yml
+│       └── handlers/main.yml      # Restart Dock / Finder, only when changed
 ├── verify.sh                 # Post-run health check
 ├── playbook.yml              # Main Ansible playbook
 ├── inventory.ini             # Ansible inventory
@@ -204,6 +219,7 @@ ansible-playbook playbook.yml --tags docker
 ansible-playbook playbook.yml --tags kubernetes
 ansible-playbook playbook.yml --tags vscode
 ansible-playbook playbook.yml --tags zsh
+ansible-playbook playbook.yml --tags system
 ```
 
 Lint the playbook before committing:

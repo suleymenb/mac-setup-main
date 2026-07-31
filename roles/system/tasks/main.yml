@@ -1,0 +1,54 @@
+---
+# macOS system processes and settings.
+#
+# This role runs LAST, on purpose: it restarts Dock and Finder, so it should
+# only happen once everything else is installed and settled.
+#
+# Settings are driven from group_vars/all.yml — add them there, not here.
+# Restarts go through handlers, so Dock/Finder are only killed when something
+# actually changed. Running this role twice in a row should restart nothing.
+
+# --- Dock --------------------------------------------------------------------
+
+- name: Count apps currently pinned to the Dock
+  shell: |
+    set -o pipefail
+    defaults read com.apple.dock persistent-apps 2>/dev/null | grep -c 'tile-data' || true
+  args:
+    executable: /bin/bash
+  register: dock_pinned_count
+  changed_when: false
+
+- name: Clear all pinned apps from the Dock
+  command: defaults write com.apple.dock persistent-apps -array
+  when:
+    - system_dock_clear_persistent_apps | default(false)
+    - (dock_pinned_count.stdout | trim | int) > 0
+  notify: Restart Dock
+
+- name: Report the Dock is already clear
+  debug:
+    msg: "Dock already has no pinned apps — nothing to do."
+  when:
+    - system_dock_clear_persistent_apps | default(false)
+    - (dock_pinned_count.stdout | trim | int) == 0
+
+# --- generic defaults --------------------------------------------------------
+# Anything added to system_defaults in group_vars/all.yml is applied here.
+# osx_defaults compares the current value first, so it is properly idempotent
+# and reports changed only when it really writes something.
+
+- name: Apply macOS defaults
+  community.general.osx_defaults:
+    domain: "{{ item.domain }}"
+    key: "{{ item.key }}"
+    type: "{{ item.type }}"
+    value: "{{ item.value }}"
+    state: present
+  loop: "{{ system_defaults | default([]) }}"
+  loop_control:
+    label: "{{ item.domain }} {{ item.key }}"
+  register: defaults_applied
+  notify:
+    - Restart Dock
+    - Restart Finder

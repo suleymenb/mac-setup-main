@@ -33,3 +33,7 @@
       tags: [vscode]
     - role: zsh
       tags: [zsh]
+    # Always last: this role restarts Dock and Finder, so everything else
+    # should be installed and settled before it runs.
+    - role: system
+      tags: [system]
