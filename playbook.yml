@@ -29,6 +29,8 @@
       tags: [docker]
     - role: kubernetes
       tags: [kubernetes]
+    - role: aws
+      tags: [aws]
     - role: vscode
       tags: [vscode]
     - role: zsh

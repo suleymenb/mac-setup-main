@@ -232,6 +232,33 @@ check_cmd "helm binary"    helm version --short
 check_zshrc "kubectl zsh block"  '^# BEGIN ANSIBLE_KUBECTL'
 check_zshrc "alias k=kubectl"    "^alias k='kubectl'"
 
+# --- aws ---------------------------------------------------------------------
+section "AWS"
+
+for f in $(list_or aws_formulae "awscli"); do
+  check_formula "$f"
+done
+
+for f in $(list_or aws_formulae_optional "eksctl aws-sam-cli aws-vault"); do
+  if brew list --formula --versions "$f" >/dev/null 2>&1; then
+    ok "$f" "$(brew list --formula --versions "$f" 2>/dev/null | head -n1)"
+  else
+    warn "$f" "optional — not installed"
+  fi
+done
+
+for c in $(list_or aws_casks "session-manager-plugin"); do
+  check_cask "$c"
+done
+
+check_cmd "aws CLI" aws --version
+
+if [[ -f "$HOME/.aws/config" ]]; then
+  ok "~/.aws/config exists"
+else
+  warn "~/.aws/config exists" "run: aws configure sso"
+fi
+
 # --- cli tools ---------------------------------------------------------------
 section "CLI tools"
 
@@ -271,7 +298,7 @@ else
 fi
 
 # App bundle names differ from cask tokens, hence the explicit list
-for app in "iTerm" "Rectangle" "Stats" "Visual Studio Code"; do
+for app in "iTerm" "Rectangle" "Stats" "Visual Studio Code" "Sublime Text" "Firefox" "VLC"; do
   if [[ -d "/Applications/${app}.app" ]]; then
     ok "${app}.app present"
   else
@@ -384,6 +411,15 @@ if defaults read -g AppleInterfaceStyle 2>/dev/null | grep -qi dark; then
   ok "Dark mode enabled"
 else
   bad "Dark mode enabled" "AppleInterfaceStyle is not Dark"
+fi
+
+if command -v defaultbrowser >/dev/null 2>&1; then
+  cur_browser=$(defaultbrowser 2>/dev/null | grep '^\* ' | tr -d '* ')
+  if [[ "$cur_browser" == "firefox" ]]; then
+    ok "Default browser" "firefox"
+  else
+    warn "Default browser" "${cur_browser:-unknown} — macOS needs you to confirm the change"
+  fi
 fi
 
 scroll_dir=$(defaults read -g com.apple.swipescrolldirection 2>/dev/null || echo 1)

@@ -34,20 +34,37 @@ brew_formulae:
   - vim
   - mc
   - ansible-lint
+  - defaultbrowser   # used by the system role to set the default browser
 
 # brew_formulae_absent:
-#   - 
+#   -
 
 brew_casks:
   - iterm2
   - rectangle
   - stats
   - visual-studio-code
+  - sublime-text
+  - firefox
+  - vlc
   - font-jetbrains-mono
   - font-meslo-lg-nerd-font
 
 brew_casks_absent:
   - zed
+
+# --- aws ---------------------------------------------------------------------
+aws_formulae:
+  - awscli
+
+# Optional: a rename upstream logs "Skipped" instead of failing the run.
+aws_formulae_optional:
+  - eksctl          # EKS clusters, pairs with the kubernetes role
+  - aws-sam-cli     # serverless
+  - aws-vault       # credential storage in the macOS keychain
+
+aws_casks:
+  - session-manager-plugin   # aws ssm start-session
 
 # --- terraform ---------------------------------------------------------------
 # terraform is not in homebrew-core (Business Source License), hence the tap.
@@ -95,6 +112,12 @@ vscode_theme_settings:
 # Strips every pinned app from the Dock, leaving only running apps and the
 # Downloads/Trash side. Runs only when the Dock actually has pinned apps.
 system_dock_clear_persistent_apps: true
+
+# Default browser. Uses the `defaultbrowser` CLI (installed via brew_formulae).
+# Set to "" to leave the default browser alone.
+# NOTE: on recent macOS this still pops a confirmation dialog you must click —
+# Apple does not allow changing it silently. The task never fails on that.
+system_default_browser: "firefox"
 
 # Appearance — applied at the very end of the system role.
 system_dark_mode: true

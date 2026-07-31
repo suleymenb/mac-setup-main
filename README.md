@@ -39,11 +39,12 @@ reach every app.
 | **Infra** | terraform (`hashicorp/tap`), terraform-docs, tflint |
 | **Containers** | Docker Desktop, docker-compose, lazydocker, dive |
 | **Kubernetes** | kubernetes-cli, helm, k9s, kubectx, minikube |
-| **Apps** | iTerm2, Rectangle, Stats, Visual Studio Code |
+| **AWS** | awscli, eksctl, aws-sam-cli, aws-vault, session-manager-plugin |
+| **Apps** | iTerm2, Rectangle, Stats, Visual Studio Code, Sublime Text, Firefox, VLC |
 | **Fonts** | JetBrains Mono, Meslo LG Nerd Font |
 | **Shell** | Oh My Zsh, powerlevel10k, autosuggestions, syntax-highlighting |
 | **VS Code** | The Digital Life theme, Material Icon Theme (both activated) |
-| **System** | Clears the Dock, dark mode, dark app icons, natural scrolling off |
+| **System** | Clears the Dock, dark mode, dark app icons, natural scrolling off, Firefox as default browser |
 
 Aliases: `rz` (reload zshrc), `ls`/`ll` (eza), `k` (kubectl), plus kubectl completion.
 
@@ -101,8 +102,11 @@ ansible-playbook playbook.yml --check            # dry run
 ansible-lint                                     # lint before committing
 ```
 
-Tags: `homebrew`, `terraform`, `docker`, `kubernetes`, `vscode`, `zsh`, `system`.
-Preflight always runs.
+Tags: `homebrew`, `terraform`, `docker`, `kubernetes`, `aws`, `vscode`, `zsh`,
+`system`. Preflight always runs.
+
+AWS credentials are deliberately not managed here — they are secrets. After the
+run: `aws configure sso` (recommended) or `aws configure`.
 
 ## How it fails
 
@@ -164,6 +168,11 @@ sudo -v && ansible-playbook playbook.yml
 `-K` does not work here — it does not populate `ansible_become_password` for
 this module.
 
+**Firefox did not become the default browser**
+macOS does not allow changing this silently — it shows a confirmation dialog you
+have to click. The playbook asks, you confirm. Check with `defaultbrowser`, or
+set it in System Settings › Desktop & Dock › Default web browser.
+
 **Dark mode or scroll direction did not change**
 Both are written as preferences and persist, but running apps only pick them up
 after a logout. For dark mode the AppleScript alternative applies instantly, but
@@ -213,7 +222,7 @@ bootstrap/bootstrap.sh      first-run setup, guards against nested clones
 verify.sh                   post-run health check
 roles/
   preflight/                validates everything up front (not wrapped)
-  homebrew/ terraform/ docker/ kubernetes/ vscode/ zsh/ system/
+  homebrew/ terraform/ docker/ kubernetes/ aws/ vscode/ zsh/ system/
     tasks/main.yml          block/rescue wrapper
     tasks/tasks.yml         the actual work
   system/handlers/          restart Dock / Finder / SystemUIServer when changed

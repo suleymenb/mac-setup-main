@@ -33,6 +33,39 @@
     - system_dock_clear_persistent_apps | default(false)
     - (dock_pinned_count.stdout | trim | int) == 0
 
+# --- default browser ---------------------------------------------------------
+# Apple does not allow changing the default browser silently: macOS pops a
+# confirmation dialog you have to click. The `defaultbrowser` CLI triggers that
+# dialog; it cannot bypass it. So this is best-effort and never fatal.
+
+- name: Check the current default browser
+  command: defaultbrowser
+  environment:
+    PATH: "{{ brew_bin_paths }}:{{ ansible_facts.env.PATH }}"
+  register: current_browser
+  changed_when: false
+  failed_when: false
+  when: system_default_browser | default('') | length > 0
+
+- name: Set the default browser
+  command: "defaultbrowser {{ system_default_browser }}"
+  environment:
+    PATH: "{{ brew_bin_paths }}:{{ ansible_facts.env.PATH }}"
+  register: set_browser
+  failed_when: false
+  when:
+    - system_default_browser | default('') | length > 0
+    - current_browser.rc | default(1) == 0
+    - "'* ' ~ system_default_browser not in (current_browser.stdout | default(''))"
+
+- name: Note that macOS asks you to confirm the browser change
+  debug:
+    msg: >-
+      Asked macOS to make {{ system_default_browser }} the default browser.
+      macOS shows a confirmation dialog for this — click "Use {{ system_default_browser | capitalize }}"
+      if it appears. Verify afterwards with: defaultbrowser
+  when: set_browser is not skipped
+
 # --- generic defaults --------------------------------------------------------
 # Anything added to system_defaults in group_vars/all.yml is applied here.
 # osx_defaults compares the current value first, so it is properly idempotent

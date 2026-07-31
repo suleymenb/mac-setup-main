@@ -97,7 +97,9 @@
   command: "brew info --formula {{ item }}"
   environment:
     PATH: "{{ brew_bin_paths }}:{{ ansible_facts.env.PATH }}"
-  loop: "{{ brew_formulae + terraform_formulae + docker_formulae + kubernetes_formulae }}"
+  loop: >-
+    {{ brew_formulae + terraform_formulae + docker_formulae
+       + kubernetes_formulae + (aws_formulae | default([])) }}
   register: formula_check
   changed_when: false
   failed_when: false
@@ -114,7 +116,7 @@
   command: "brew info --cask {{ item }}"
   environment:
     PATH: "{{ brew_bin_paths }}:{{ ansible_facts.env.PATH }}"
-  loop: "{{ brew_casks + [docker_cask] }}"
+  loop: "{{ brew_casks + [docker_cask] + (aws_casks | default([])) }}"
   register: cask_check
   changed_when: false
   failed_when: false
@@ -132,7 +134,8 @@
   environment:
     PATH: "{{ brew_bin_paths }}:{{ ansible_facts.env.PATH }}"
   loop: >-
-    {{ terraform_formulae_optional + docker_formulae_optional + kubernetes_formulae_optional }}
+    {{ terraform_formulae_optional + docker_formulae_optional
+       + kubernetes_formulae_optional + (aws_formulae_optional | default([])) }}
   register: optional_check
   changed_when: false
   failed_when: false

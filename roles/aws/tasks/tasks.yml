@@ -1,0 +1,75 @@
+---
+# Package names live in group_vars/all.yml.
+
+- name: Install core AWS tooling
+  community.general.homebrew:
+    name: "{{ aws_formulae }}"
+    state: present
+    update_homebrew: false
+
+- name: Install optional AWS tooling
+  community.general.homebrew:
+    name: "{{ item }}"
+    state: present
+    update_homebrew: false
+  loop: "{{ aws_formulae_optional | default([]) }}"
+  register: aws_optional
+  failed_when: false
+
+- name: Report optional AWS tools that were skipped
+  debug:
+    msg: "Skipped {{ item.item }} — {{ item.msg | default('unknown error') }}"
+  loop: "{{ aws_optional.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when: "'Error' in (item.msg | default(''))"
+
+- name: Install AWS casks
+  community.general.homebrew_cask:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ aws_casks | default([]) }}"
+  register: aws_cask_install
+  failed_when: false
+
+- name: Report AWS casks that were skipped
+  debug:
+    msg: "Skipped cask {{ item.item }} — {{ item.msg | default('unknown error') }}"
+  loop: "{{ aws_cask_install.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when: "'Error' in (item.msg | default(''))"
+
+- name: Verify the aws CLI is runnable
+  command: aws --version
+  environment:
+    PATH: "{{ brew_bin_paths }}:{{ ansible_facts.env.PATH }}"
+  register: aws_version
+  changed_when: false
+  failed_when: false
+
+- name: Fail if the aws CLI is not runnable
+  fail:
+    msg: >-
+      awscli is installed but not reachable on PATH. Open a new terminal, or
+      run:  eval "$(/opt/homebrew/bin/brew shellenv)"  and try again.
+  when: aws_version.rc != 0
+
+- name: Show aws CLI version
+  debug:
+    msg: "{{ aws_version.stdout_lines | first }}"
+
+# Credentials are deliberately NOT managed here — they are secrets and do not
+# belong in a git repo. Run `aws configure sso` or `aws configure` yourself.
+- name: Check for an existing AWS config
+  stat:
+    path: "{{ ansible_facts.env.HOME }}/.aws/config"
+  register: aws_config
+
+- name: Note that AWS credentials still need configuring
+  debug:
+    msg: >-
+      AWS tooling installed, but ~/.aws/config does not exist yet. Credentials
+      are not managed by this playbook — run "aws configure sso" (recommended)
+      or "aws configure" to set them up.
+  when: not aws_config.stat.exists

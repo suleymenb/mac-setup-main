@@ -1,0 +1,25 @@
+---
+# Thin wrapper. The real work lives in tasks.yml.
+#
+# Wrapping the role in block/rescue means a failure here is recorded and the
+# play continues with the next role, instead of aborting everything after it.
+- name: aws
+  block:
+    - name: Run the aws tasks
+      include_tasks: tasks.yml
+
+  rescue:
+    - name: Record that the aws role failed
+      set_fact:
+        mac_failed_roles: >-
+          {{ (mac_failed_roles | default([])) + [{
+               'role': 'aws',
+               'task': ansible_failed_task.name | default('unknown task'),
+               'msg': (ansible_failed_result.msg | default('no message')) | string | truncate(200)
+             }] }}
+
+    - name: Warn that aws failed but the run continues
+      debug:
+        msg: >-
+          Role 'aws' FAILED at "{{ ansible_failed_task.name | default('unknown task') }}".
+          Continuing with the remaining roles; full report at the end.
