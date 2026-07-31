@@ -1,7 +1,6 @@
 ---
-# Extension IDs are "<publisher>.<name>" from each extension's package.json:
-#   xcad2k.vscode-thedigitallife  -> publisher xcad2k, name vscode-thedigitallife
-#   PKief.material-icon-theme     -> publisher PKief,  name material-icon-theme
+# Extension IDs and theme settings live in group_vars/all.yml.
+# An ID is "<publisher>.<name>" as found in the extension's package.json.
 
 - name: Locate the VS Code CLI
   stat:
@@ -26,10 +25,8 @@
 - name: Install VS Code extensions
   command: "{{ code_bin }} --install-extension {{ item }} --force"
   environment:
-    PATH: "/opt/homebrew/bin:/usr/local/bin:{{ ansible_env.PATH }}"
-  loop:
-    - xcad2k.vscode-thedigitallife
-    - PKief.material-icon-theme
+    PATH: "{{ brew_bin_paths }}:{{ ansible_env.PATH }}"
+  loop: "{{ vscode_extensions }}"
   register: vscode_ext
   when: code_bin | length > 0
   changed_when: "'successfully installed' in (vscode_ext.stdout | default(''))"
@@ -76,8 +73,4 @@
     dest: "{{ ansible_env.HOME }}/Library/Application Support/Code/User/settings.json"
     backup: true
     mode: "0644"
-  vars:
-    vscode_theme_settings:
-      workbench.colorTheme: "The Digital Life"
-      workbench.iconTheme: "material-icon-theme"
   when: code_bin | length > 0

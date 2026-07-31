@@ -13,6 +13,45 @@ for d in /opt/homebrew/bin /usr/local/bin; do
 done
 export PATH
 
+# Package lists come from group_vars/all.yml — the same file the playbook
+# installs from — so this script can never drift out of sync with it.
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VARS_FILE="$REPO_ROOT/group_vars/all.yml"
+
+# read_list <yaml key> -> prints one item per line
+read_list() {
+  python3 - "$VARS_FILE" "$1" <<'PY'
+import sys, yaml
+try:
+    with open(sys.argv[1]) as fh:
+        data = yaml.safe_load(fh) or {}
+except Exception:
+    sys.exit(0)
+value = data.get(sys.argv[2], [])
+if isinstance(value, str):
+    value = [value]
+for entry in value or []:
+    print(entry)
+PY
+}
+
+if [[ ! -f "$VARS_FILE" ]] || ! python3 -c "import yaml" 2>/dev/null; then
+  printf "Warning: cannot read %s (missing file or PyYAML) — falling back to built-in lists.\n" "$VARS_FILE"
+  USE_VARS=0
+else
+  USE_VARS=1
+fi
+
+# list_or <yaml key> <fallback, space separated>
+# Package names never contain spaces, so plain word splitting is safe here.
+# Deliberately avoids mapfile/readarray: macOS still ships bash 3.2.
+list_or() {
+  local out=""
+  (( USE_VARS )) && out="$(read_list "$1")"
+  [[ -z "$out" ]] && out="$2"
+  printf '%s\n' "$out"
+}
+
 PASS=0
 FAIL=0
 WARN=0
@@ -149,9 +188,11 @@ section "Docker"
 
 check_cask "docker-desktop" "Docker Desktop"
 check_dir "Docker.app present" "/Applications/Docker.app"
-check_formula docker-compose
+for f in $(list_or docker_formulae "docker-compose"); do
+  check_formula "$f"
+done
 
-for f in lazydocker dive; do
+for f in $(list_or docker_formulae_optional "lazydocker dive"); do
   if brew list --formula --versions "$f" >/dev/null 2>&1; then
     ok "$f" "$(brew list --formula --versions "$f" 2>/dev/null | head -n1)"
   else
@@ -173,10 +214,11 @@ fi
 # --- kubernetes --------------------------------------------------------------
 section "Kubernetes"
 
-check_formula kubernetes-cli "kubernetes-cli (kubectl)"
-check_formula helm
+for f in $(list_or kubernetes_formulae "kubernetes-cli helm"); do
+  check_formula "$f"
+done
 
-for f in k9s kubectx minikube; do
+for f in $(list_or kubernetes_formulae_optional "k9s kubectx minikube"); do
   if brew list --formula --versions "$f" >/dev/null 2>&1; then
     ok "$f" "$(brew list --formula --versions "$f" 2>/dev/null | head -n1)"
   else
@@ -193,11 +235,9 @@ check_zshrc "alias k=kubectl"    "^alias k='kubectl'"
 # --- cli tools ---------------------------------------------------------------
 section "CLI tools"
 
-check_formula eza
-check_formula dust "dust (du-dust)"
-check_formula vim
-check_formula mc "mc (midnight commander)"
-check_formula ansible-lint
+for f in $(list_or brew_formulae "eza dust vim mc ansible-lint"); do
+  check_formula "$f"
+done
 
 check_cmd "eza binary"          eza --version
 check_cmd "dust binary"         dust --version
@@ -215,10 +255,11 @@ fi
 # --- applications ------------------------------------------------------------
 section "Applications"
 
-check_cask iterm2
-check_cask rectangle
-check_cask stats
-check_cask visual-studio-code "Visual Studio Code"
+# fonts are casks too, but they get their own section below
+for c in $(list_or brew_casks "iterm2 rectangle stats visual-studio-code"); do
+  case "$c" in font-*) continue ;; esac
+  check_cask "$c"
+done
 
 # zed was dropped in favour of VS Code
 if brew list --cask --versions zed >/dev/null 2>&1; then
@@ -242,7 +283,7 @@ check_cmd "code CLI" code --version
 
 if command -v code >/dev/null 2>&1; then
   installed_ext=$(code --list-extensions 2>/dev/null)
-  for ext in xcad2k.vscode-thedigitallife PKief.material-icon-theme; do
+  for ext in $(list_or vscode_extensions "xcad2k.vscode-thedigitallife PKief.material-icon-theme"); do
     if grep -qix "$ext" <<<"$installed_ext"; then
       ok "ext $ext"
     else

@@ -1,12 +1,6 @@
 ---
-# Terraform is no longer shipped in homebrew-core (HashiCorp moved it to the
-# Business Source License). It must come from HashiCorp's official tap.
-# This is why previous runs left terraform missing/broken.
-
-- name: Add HashiCorp homebrew tap
-  community.general.homebrew_tap:
-    name: hashicorp/tap
-    state: present
+# Taps and package names live in group_vars/all.yml.
+# The preflight role has already tapped and validated everything by now.
 
 - name: Unlink any stale homebrew-core terraform
   shell: |
@@ -16,49 +10,39 @@
     fi
   args:
     executable: /bin/bash
+  environment:
+    PATH: "{{ brew_bin_paths }}:{{ ansible_env.PATH }}"
   changed_when: false
 
-- name: Install terraform from HashiCorp tap
+- name: Install terraform tooling
   community.general.homebrew:
-    name: hashicorp/tap/terraform
+    name: "{{ terraform_formulae }}"
     state: present
     update_homebrew: false
 
-# tflint was moved out of homebrew-core to the terraform-linters tap.
-# Homebrew does NOT auto-tap from a qualified name, so tap it explicitly first.
-- name: Add terraform-linters tap
-  community.general.homebrew_tap:
-    name: terraform-linters/tap
-    state: present
-  register: tflint_tap
-  failed_when: false
-
-- name: Install tflint from the terraform-linters tap
+- name: Install optional terraform tooling
   community.general.homebrew:
-    name: terraform-linters/tap/tflint
+    name: "{{ item }}"
     state: present
     update_homebrew: false
-  register: tflint_install
+  loop: "{{ terraform_formulae_optional }}"
+  register: tf_optional
   failed_when: false
 
-- name: Warn if tflint could not be installed
+- name: Report optional terraform tools that were skipped
   debug:
-    msg: "tflint was skipped — {{ tflint_install.msg | default('unknown error') }}"
-  when: "'Error' in (tflint_install.msg | default(''))"
-
-- name: Install terraform-docs
-  community.general.homebrew:
-    name: terraform-docs
-    state: present
-    update_homebrew: false
+    msg: "Skipped {{ item.item }} — {{ item.msg | default('unknown error') }}"
+  loop: "{{ tf_optional.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when: "'Error' in (item.msg | default(''))"
 
 # Ansible's command module does not go through a shell, so it only sees the
-# PATH it inherited. On a fresh machine that PATH has no /opt/homebrew/bin yet,
-# which makes a perfectly installed terraform look missing.
+# PATH it inherited — which on a fresh machine has no Homebrew in it yet.
 - name: Verify terraform is runnable
   command: terraform version
   environment:
-    PATH: "/opt/homebrew/bin:/usr/local/bin:{{ ansible_env.PATH }}"
+    PATH: "{{ brew_bin_paths }}:{{ ansible_env.PATH }}"
   register: terraform_version
   changed_when: false
   failed_when: false

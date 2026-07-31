@@ -17,6 +17,10 @@
       default: ""
 
   roles:
+    # Validates the environment and every package name before anything is
+    # installed, so a bad name fails in seconds instead of minutes.
+    - role: preflight
+      tags: [always]
     - role: homebrew
       tags: [homebrew]
     - role: terraform

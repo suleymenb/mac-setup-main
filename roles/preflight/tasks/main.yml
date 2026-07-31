@@ -1,0 +1,152 @@
+---
+# Fail fast, and fail with the *complete* picture.
+#
+# Every abort during this project's history was discovered minutes into a run,
+# one problem at a time. This role validates the whole environment and every
+# package name up front, so you get one list of everything that is wrong.
+
+- name: Assert this is macOS
+  assert:
+    that: ansible_system == 'Darwin'
+    fail_msg: "This playbook targets macOS only (detected: {{ ansible_system }})."
+    quiet: true
+
+- name: Assert Xcode Command Line Tools are installed
+  command: xcode-select -p
+  register: xcode_clt
+  changed_when: false
+  failed_when: false
+
+- name: Report missing Command Line Tools
+  fail:
+    msg: |
+      Xcode Command Line Tools are missing. Install them first:
+        xcode-select --install
+  when: xcode_clt.rc != 0
+
+- name: Measure free disk space
+  command: df -g /
+  register: df_root
+  changed_when: false
+
+- name: Assert there is enough free disk space
+  assert:
+    that: (df_root.stdout_lines[1].split()[3] | int) >= (preflight_min_free_gb | int)
+    fail_msg: >-
+      Only {{ df_root.stdout_lines[1].split()[3] }} GB free on / —
+      at least {{ preflight_min_free_gb }} GB is needed.
+    quiet: true
+
+- name: Check that the hosts we download from are reachable
+  wait_for:
+    host: "{{ item }}"
+    port: 443
+    timeout: 8
+  loop: "{{ preflight_hosts }}"
+  register: net_check
+  failed_when: false
+
+- name: Report unreachable hosts
+  fail:
+    msg: |
+      Cannot reach these hosts on port 443 — check your network or VPN:
+      {{ net_check.results | selectattr('failed', 'defined') | selectattr('failed')
+         | map(attribute='item') | list | join(', ') }}
+  when: net_check.results | selectattr('failed', 'defined') | selectattr('failed') | list | length > 0
+
+- name: Check that Homebrew is available
+  command: brew --version
+  environment:
+    PATH: "{{ brew_bin_paths }}:{{ ansible_env.PATH }}"
+  register: brew_check
+  changed_when: false
+  failed_when: false
+
+- name: Report missing Homebrew
+  fail:
+    msg: |
+      Homebrew is not installed or not on PATH. Run bootstrap/bootstrap.sh first,
+      or:  eval "$(/opt/homebrew/bin/brew shellenv)"
+  when: brew_check.rc != 0
+
+- name: Check whether sudo credentials are cached
+  command: sudo -n true
+  register: sudo_cached
+  changed_when: false
+  failed_when: false
+
+- name: Warn if sudo is not primed
+  debug:
+    msg: >-
+      sudo is not cached. Docker Desktop needs root to link its helper binaries.
+      Either type your password at the prompt, or cancel and run:
+      sudo -v && ansible-playbook playbook.yml
+  when: sudo_cached.rc != 0 and (mac_sudo_password | default('') | length == 0)
+
+# --- package name validation -------------------------------------------------
+# Taps must exist before a fully qualified name like hashicorp/tap/terraform
+# can be resolved at all.
+
+- name: Ensure required taps are present
+  community.general.homebrew_tap:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ brew_taps }}"
+
+- name: Validate every required formula name resolves
+  command: "brew info --formula {{ item }}"
+  environment:
+    PATH: "{{ brew_bin_paths }}:{{ ansible_env.PATH }}"
+  loop: "{{ brew_formulae + terraform_formulae + docker_formulae + kubernetes_formulae }}"
+  register: formula_check
+  changed_when: false
+  failed_when: false
+
+- name: Report every formula name that does not exist
+  fail:
+    msg: |
+      These formula names do not resolve in Homebrew:
+        {{ formula_check.results | selectattr('rc', 'ne', 0) | map(attribute='item') | list | join('\n  ') }}
+      Nothing has been installed. Fix the names in group_vars/all.yml.
+  when: formula_check.results | selectattr('rc', 'ne', 0) | list | length > 0
+
+- name: Validate every required cask name resolves
+  command: "brew info --cask {{ item }}"
+  environment:
+    PATH: "{{ brew_bin_paths }}:{{ ansible_env.PATH }}"
+  loop: "{{ brew_casks + [docker_cask] }}"
+  register: cask_check
+  changed_when: false
+  failed_when: false
+
+- name: Report every cask name that does not exist
+  fail:
+    msg: |
+      These cask names do not resolve in Homebrew:
+        {{ cask_check.results | selectattr('rc', 'ne', 0) | map(attribute='item') | list | join('\n  ') }}
+      Nothing has been installed. Fix the names in group_vars/all.yml.
+  when: cask_check.results | selectattr('rc', 'ne', 0) | list | length > 0
+
+- name: Validate optional formula names
+  command: "brew info --formula {{ item }}"
+  environment:
+    PATH: "{{ brew_bin_paths }}:{{ ansible_env.PATH }}"
+  loop: >-
+    {{ terraform_formulae_optional + docker_formulae_optional + kubernetes_formulae_optional }}
+  register: optional_check
+  changed_when: false
+  failed_when: false
+
+- name: Note optional packages that will be skipped
+  debug:
+    msg: >-
+      These optional packages do not resolve and will be skipped:
+      {{ optional_check.results | selectattr('rc', 'ne', 0) | map(attribute='item') | list | join(', ') }}
+  when: optional_check.results | selectattr('rc', 'ne', 0) | list | length > 0
+
+- name: Preflight passed
+  debug:
+    msg: >-
+      Preflight OK — macOS, Xcode CLT, disk, network, Homebrew and
+      {{ (brew_formulae + terraform_formulae + docker_formulae + kubernetes_formulae) | length }}
+      formulae + {{ (brew_casks + [docker_cask]) | length }} casks all validated.

@@ -1,0 +1,89 @@
+---
+# Single source of truth for everything this playbook manages.
+#
+# The preflight role validates every name in this file *before* anything is
+# installed, and each role installs from these same lists. Add a package here,
+# nowhere else.
+#
+# "optional" lists never abort the run — a rename upstream (as happened with
+# tflint moving out of homebrew-core) should not kill the whole playbook.
+
+# Homebrew lives in /opt/homebrew on Apple Silicon, /usr/local on Intel.
+# Ansible's command module does not use a shell, so tasks that run binaries
+# need this on PATH explicitly.
+brew_bin_paths: "/opt/homebrew/bin:/usr/local/bin"
+
+# --- preflight ---------------------------------------------------------------
+preflight_min_free_gb: 10
+preflight_hosts:
+  - github.com
+  - raw.githubusercontent.com
+  - ghcr.io
+  - formulae.brew.sh
+
+# --- taps --------------------------------------------------------------------
+# Homebrew does not auto-tap from a fully qualified formula name.
+brew_taps:
+  - hashicorp/tap
+  - terraform-linters/tap
+
+# --- core CLI tooling --------------------------------------------------------
+brew_formulae:
+  - eza
+  - dust
+  - vim
+  - mc
+  - ansible-lint
+
+brew_formulae_absent:
+  - rust
+
+brew_casks:
+  - iterm2
+  - rectangle
+  - stats
+  - visual-studio-code
+  - font-jetbrains-mono
+  - font-meslo-lg-nerd-font
+
+brew_casks_absent:
+  - zed
+
+# --- terraform ---------------------------------------------------------------
+# terraform is not in homebrew-core (Business Source License), hence the tap.
+terraform_formulae:
+  - hashicorp/tap/terraform
+  - terraform-docs
+
+terraform_formulae_optional:
+  - terraform-linters/tap/tflint
+
+# --- docker ------------------------------------------------------------------
+docker_cask: docker-desktop
+
+docker_formulae:
+  - docker-compose
+
+docker_formulae_optional:
+  - lazydocker
+  - dive
+
+# --- kubernetes --------------------------------------------------------------
+# "kubectl" is only an alias; kubernetes-cli is the real formula name.
+kubernetes_formulae:
+  - kubernetes-cli
+  - helm
+
+kubernetes_formulae_optional:
+  - k9s
+  - kubectx
+  - minikube
+
+# --- vs code -----------------------------------------------------------------
+vscode_extensions:
+  - xcad2k.vscode-thedigitallife
+  - PKief.material-icon-theme
+
+vscode_theme_settings:
+  workbench.colorTheme: "The Digital Life"
+  workbench.iconTheme: "material-icon-theme"

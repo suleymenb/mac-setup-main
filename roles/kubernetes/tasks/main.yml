@@ -1,24 +1,18 @@
 ---
-# Core tools — the run should fail loudly if these are missing.
-# "kubernetes-cli" is the canonical formula; "kubectl" is only an alias.
+# Package names live in group_vars/all.yml.
+
 - name: Install core kubernetes CLI tooling
   community.general.homebrew:
-    name:
-      - kubernetes-cli
-      - helm
+    name: "{{ kubernetes_formulae }}"
     state: present
     update_homebrew: false
 
-# Convenience tools — a rename upstream should not abort the whole playbook.
 - name: Install optional kubernetes tooling
   community.general.homebrew:
     name: "{{ item }}"
     state: present
     update_homebrew: false
-  loop:
-    - k9s
-    - kubectx
-    - minikube
+  loop: "{{ kubernetes_formulae_optional }}"
   register: k8s_optional
   failed_when: false
 
@@ -42,7 +36,7 @@
 - name: Verify kubectl is runnable
   command: kubectl version --client
   environment:
-    PATH: "/opt/homebrew/bin:/usr/local/bin:{{ ansible_env.PATH }}"
+    PATH: "{{ brew_bin_paths }}:{{ ansible_env.PATH }}"
   register: kubectl_version
   changed_when: false
   failed_when: false

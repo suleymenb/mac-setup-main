@@ -1,23 +1,25 @@
 ---
+# Package names live in group_vars/all.yml.
+#
 # Docker Desktop's cask symlinks helper binaries into /usr/local/bin, which
-# needs root. Homebrew shells out to `sudo` itself, and Ansible gives it no
+# needs root. Homebrew shells out to `sudo` itself and Ansible gives it no
 # terminal to prompt on — hence "sudo: a terminal is required to read the
-# password".
+# password". There is no --no-binaries escape hatch; Homebrew links
+# /usr/local/bin/kubectl regardless. So the password has to reach Homebrew
+# through SUDO_ASKPASS, or sudo must already be cached.
+
 - name: Check whether Docker.app is already present
   stat:
     path: /Applications/Docker.app
   register: docker_app
 
-# The cask needs root either way. There is no --no-binaries escape hatch:
-# Homebrew links /usr/local/bin/kubectl regardless. So either sudo is already
-# cached, or we hand Homebrew the password through SUDO_ASKPASS.
 - name: Install Docker Desktop
   community.general.homebrew_cask:
-    name: docker-desktop
+    name: "{{ docker_cask }}"
     state: present
     sudo_password: "{{ mac_sudo_password if (mac_sudo_password | default('') | length > 0) else omit }}"
   when: not docker_app.stat.exists
-  register: docker_cask
+  register: docker_cask_install
   failed_when: false
   no_log: true
 
@@ -37,17 +39,20 @@
 
 - name: Install docker CLI tooling
   community.general.homebrew:
+    name: "{{ docker_formulae }}"
+    state: present
+    update_homebrew: false
+
+- name: Install optional docker tooling
+  community.general.homebrew:
     name: "{{ item }}"
     state: present
     update_homebrew: false
-  loop:
-    - docker-compose
-    - lazydocker
-    - dive
+  loop: "{{ docker_formulae_optional }}"
   register: docker_tools
   failed_when: false
 
-- name: Report docker tools that were skipped
+- name: Report optional docker tools that were skipped
   debug:
     msg: "Skipped {{ item.item }} — {{ item.msg | default('unknown error') }}"
   loop: "{{ docker_tools.results | default([]) }}"
@@ -58,7 +63,7 @@
 - name: Check whether the docker CLI is available
   command: docker --version
   environment:
-    PATH: "/opt/homebrew/bin:/usr/local/bin:{{ ansible_env.PATH }}"
+    PATH: "{{ brew_bin_paths }}:{{ ansible_env.PATH }}"
   register: docker_cli
   changed_when: false
   failed_when: false

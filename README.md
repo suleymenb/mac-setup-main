@@ -127,7 +127,10 @@ than to automate, and automating them runs into macOS permission prompts.
 mac-setup-main/
 ├── bootstrap/
 │   └── bootstrap.sh          # Initial setup script
+├── group_vars/
+│   └── all.yml               # Single source of truth: every package name
 ├── roles/
+│   ├── preflight/tasks/main.yml   # Validates everything before installing
 │   ├── homebrew/tasks/main.yml    # Homebrew, formulae, casks, fonts
 │   ├── terraform/tasks/main.yml   # HashiCorp tap, terraform, tflint
 │   ├── docker/tasks/main.yml      # Docker Desktop + CLI tooling
@@ -143,7 +146,27 @@ mac-setup-main/
 
 ---
 
-## 4a. Verifying the Installation
+## 4a. Preflight Checks
+
+The `preflight` role runs before anything is installed and validates:
+
+- macOS, Xcode Command Line Tools, free disk space
+- Network reachability of github.com, ghcr.io and formulae.brew.sh
+- Homebrew present and on PATH
+- Whether sudo is cached (Docker Desktop needs root)
+- **That every formula and cask name in `group_vars/all.yml` actually resolves**
+
+That last check is the important one. Homebrew renames and moves packages —
+`tflint` left homebrew-core, the `docker` cask became `docker-desktop`,
+`kubectl` is only an alias for `kubernetes-cli`. Previously each of those
+aborted the run minutes in, one at a time. Preflight reports *all* bad names at
+once, in seconds, before a single package is installed.
+
+It is tagged `always`, so it runs even with `--tags docker`.
+
+---
+
+## 4b. Verifying the Installation
 
 `bootstrap.sh` runs this automatically at the end, but you can run it any time:
 
@@ -205,11 +228,18 @@ This repository serves as a reproducible macOS baseline for development environm
 
 ## 7. Customization
 
-You can customize your setup by editing:
+**To add or remove a package, edit `group_vars/all.yml` and nothing else.**
+The roles install from those lists, the preflight role validates them, and
+`verify.sh` reads the same file — so the three can never drift apart.
 
-- `roles/homebrew/tasks/main.yml` - Add/remove packages and casks
-- `roles/vscode/tasks/main.yml` - Add VS Code extensions or settings
-- `roles/zsh/tasks/main.yml` - Modify shell configuration and aliases
+Lists ending in `_optional` are best-effort: if a name stops resolving because
+Homebrew renamed or moved it, the run logs a "Skipped" line and carries on
+instead of aborting.
+
+Other files worth editing:
+
+- `roles/zsh/tasks/main.yml` - Shell configuration and aliases
+- `roles/vscode/tasks/main.yml` - How VS Code settings are merged
 - `playbook.yml` - Include/exclude roles
 
 ---

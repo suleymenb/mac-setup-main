@@ -1,3 +1,6 @@
+---
+# Package lists live in group_vars/all.yml — do not add names here.
+
 - name: Ensure Homebrew is installed (best-effort)
   shell: |
     set -euo pipefail
@@ -10,35 +13,23 @@
 
 - name: Install brew formulae
   community.general.homebrew:
-    name:
-      - eza
-      - dust
-      - vim
-      - mc
-      - ansible-lint
+    name: "{{ brew_formulae }}"
     state: present
     update_homebrew: false
 
-# du-dust now comes from the brew 'dust' formula, so nothing needs cargo.
-- name: Remove rust (no longer required by anything in this playbook)
+- name: Remove formulae that are no longer wanted
   community.general.homebrew:
-    name: rust
+    name: "{{ brew_formulae_absent }}"
     state: absent
 
 - name: Install brew casks
   community.general.homebrew_cask:
-    name:
-      - iterm2
-      - rectangle
-      - stats
-      - visual-studio-code
-      - font-jetbrains-mono
-      - font-meslo-lg-nerd-font
+    name: "{{ brew_casks }}"
     state: present
 
-- name: Remove the Zed editor (replaced by VS Code)
+- name: Remove casks that are no longer wanted
   community.general.homebrew_cask:
-    name: zed
+    name: "{{ item }}"
     state: absent
-  register: zed_removed
+  loop: "{{ brew_casks_absent }}"
   failed_when: false
