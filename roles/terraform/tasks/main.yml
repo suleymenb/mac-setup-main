@@ -2,17 +2,12 @@
 # Taps and package names live in group_vars/all.yml.
 # The preflight role has already tapped and validated everything by now.
 
-- name: Unlink any stale homebrew-core terraform
-  shell: |
-    set -uo pipefail
-    if brew list --formula 2>/dev/null | grep -qx 'terraform'; then
-      brew unlink terraform || true
-    fi
-  args:
-    executable: /bin/bash
-  environment:
-    PATH: "{{ brew_bin_paths }}:{{ ansible_facts.env.PATH }}"
-  changed_when: false
+# There used to be a blanket "brew unlink terraform" here. It was a trap:
+# `brew list --formula` prints the keg name "terraform" whether it came from
+# homebrew-core or from hashicorp/tap. So on every run after the first it
+# unlinked the terraform we had just installed, and `brew install` then said
+# "already installed" without relinking — leaving no binary on PATH.
+# Linking is handled below instead, after the install, and only when needed.
 
 - name: Install terraform tooling
   community.general.homebrew:
@@ -39,21 +34,47 @@
 
 # Ansible's command module does not go through a shell, so it only sees the
 # PATH it inherited — which on a fresh machine has no Homebrew in it yet.
-- name: Verify terraform is runnable
+- name: Check whether terraform is runnable
+  command: terraform version
+  environment:
+    PATH: "{{ brew_bin_paths }}:{{ ansible_facts.env.PATH }}"
+  register: terraform_check
+  changed_when: false
+  failed_when: false
+
+# Self-healing: an unlinked keg is the usual cause, so link it and look again
+# rather than telling the user to go fix it themselves.
+- name: Link terraform if it is installed but not on PATH
+  command: brew link --overwrite hashicorp/tap/terraform
+  environment:
+    PATH: "{{ brew_bin_paths }}:{{ ansible_facts.env.PATH }}"
+  when: terraform_check.rc != 0
+  register: terraform_link
+  failed_when: false
+
+- name: Re-check terraform after linking
   command: terraform version
   environment:
     PATH: "{{ brew_bin_paths }}:{{ ansible_facts.env.PATH }}"
   register: terraform_version
   changed_when: false
   failed_when: false
+  when: terraform_check.rc != 0
 
-- name: Fail with a useful message if terraform is not runnable
+- name: Settle on whichever check produced a version
+  set_fact:
+    terraform_result: "{{ terraform_version if (terraform_check.rc != 0) else terraform_check }}"
+
+- name: Fail with a useful message if terraform is still not runnable
   fail:
-    msg: >-
-      terraform is installed but not reachable on PATH. Open a new terminal, or
-      run:  eval "$(/opt/homebrew/bin/brew shellenv)"  and try again.
-  when: terraform_version.rc != 0
+    msg: |
+      terraform is installed but not reachable on PATH, and linking it did not help.
+      Try manually:
+        brew link --overwrite hashicorp/tap/terraform
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+      brew link said: {{ terraform_link.stderr | default('(not attempted)') | trim }}
+  when: terraform_result.rc | default(1) != 0
 
 - name: Show terraform version
   debug:
-    msg: "{{ terraform_version.stdout_lines | first }}"
+    msg: "{{ terraform_result.stdout_lines | first }}"
