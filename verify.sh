@@ -128,8 +128,14 @@ else
 fi
 
 check_cmd "terraform binary"  terraform version
-check_cmd "tflint"            tflint --version
 check_cmd "terraform-docs"    terraform-docs --version
+
+# tflint lives in the terraform-linters tap, not homebrew-core
+if command -v tflint >/dev/null 2>&1; then
+  ok "tflint" "$(tflint --version 2>/dev/null | head -n1)"
+else
+  warn "tflint" "optional — brew install terraform-linters/tap/tflint"
+fi
 
 # terraform must actually run, not just exist
 if command -v terraform >/dev/null 2>&1; then
@@ -145,8 +151,14 @@ section "Docker"
 
 check_cask "docker-desktop" "Docker Desktop"
 check_formula docker-compose
-check_formula lazydocker
-check_formula dive
+
+for f in lazydocker dive; do
+  if brew list --formula --versions "$f" >/dev/null 2>&1; then
+    ok "$f" "$(brew list --formula --versions "$f" 2>/dev/null | head -n1)"
+  else
+    warn "$f" "optional — not installed"
+  fi
+done
 
 if command -v docker >/dev/null 2>&1; then
   ok "docker CLI" "$(docker --version 2>/dev/null)"
@@ -162,15 +174,19 @@ fi
 # --- kubernetes --------------------------------------------------------------
 section "Kubernetes"
 
-check_formula kubectl
+check_formula kubernetes-cli "kubernetes-cli (kubectl)"
 check_formula helm
-check_formula k9s
-check_formula kubectx
-check_formula minikube
+
+for f in k9s kubectx minikube; do
+  if brew list --formula --versions "$f" >/dev/null 2>&1; then
+    ok "$f" "$(brew list --formula --versions "$f" 2>/dev/null | head -n1)"
+  else
+    warn "$f" "optional — not installed"
+  fi
+done
 
 check_cmd "kubectl binary" kubectl version --client
 check_cmd "helm binary"    helm version --short
-check_cmd "minikube"       minikube version --short
 
 check_zshrc "kubectl zsh block"  '^# BEGIN ANSIBLE_KUBECTL'
 check_zshrc "alias k=kubectl"    "^alias k='kubectl'"

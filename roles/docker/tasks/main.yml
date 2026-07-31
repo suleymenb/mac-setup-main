@@ -6,12 +6,23 @@
 
 - name: Install docker CLI tooling
   community.general.homebrew:
-    name:
-      - docker-compose
-      - lazydocker
-      - dive
+    name: "{{ item }}"
     state: present
     update_homebrew: false
+  loop:
+    - docker-compose
+    - lazydocker
+    - dive
+  register: docker_tools
+  failed_when: false
+
+- name: Report docker tools that were skipped
+  debug:
+    msg: "Skipped {{ item.item }} — {{ item.msg | default('unknown error') }}"
+  loop: "{{ docker_tools.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when: "'Error' in (item.msg | default(''))"
 
 - name: Check whether the docker CLI is available
   command: docker --version

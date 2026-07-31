@@ -1,14 +1,34 @@
 ---
-- name: Install kubernetes CLI tooling
+# Core tools — the run should fail loudly if these are missing.
+# "kubernetes-cli" is the canonical formula; "kubectl" is only an alias.
+- name: Install core kubernetes CLI tooling
   community.general.homebrew:
     name:
-      - kubectl
+      - kubernetes-cli
       - helm
-      - k9s
-      - kubectx
-      - minikube
     state: present
     update_homebrew: false
+
+# Convenience tools — a rename upstream should not abort the whole playbook.
+- name: Install optional kubernetes tooling
+  community.general.homebrew:
+    name: "{{ item }}"
+    state: present
+    update_homebrew: false
+  loop:
+    - k9s
+    - kubectx
+    - minikube
+  register: k8s_optional
+  failed_when: false
+
+- name: Report optional kubernetes tools that were skipped
+  debug:
+    msg: "Skipped {{ item.item }} — {{ item.msg | default('unknown error') }}"
+  loop: "{{ k8s_optional.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when: "'Error' in (item.msg | default(''))"
 
 - name: Ensure kubectl completion is loaded in zsh
   blockinfile:

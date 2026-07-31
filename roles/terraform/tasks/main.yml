@@ -24,11 +24,24 @@
     state: present
     update_homebrew: false
 
-- name: Install terraform helper tooling
+# tflint was moved out of homebrew-core to the terraform-linters tap,
+# so the bare name "tflint" no longer resolves.
+- name: Install tflint from the terraform-linters tap
   community.general.homebrew:
-    name:
-      - tflint
-      - terraform-docs
+    name: terraform-linters/tap/tflint
+    state: present
+    update_homebrew: false
+  register: tflint_install
+  failed_when: false
+
+- name: Warn if tflint could not be installed
+  debug:
+    msg: "tflint was skipped — {{ tflint_install.msg | default('unknown error') }}"
+  when: "'Error' in (tflint_install.msg | default(''))"
+
+- name: Install terraform-docs
+  community.general.homebrew:
+    name: terraform-docs
     state: present
     update_homebrew: false
 
