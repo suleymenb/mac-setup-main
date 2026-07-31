@@ -12,7 +12,7 @@ Xcode Command Line Tools. Check with `xcode-select -p` — it should print
 `/Library/Developer/CommandLineTools`. If not:
 
 ```bash
-xcode-select --install
+sudo touch /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress && sudo softwareupdate --install --recommended
 ```
 
 Wait for it to finish before continuing. Everything else is installed for you.
