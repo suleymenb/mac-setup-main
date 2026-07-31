@@ -39,13 +39,13 @@ Run this on a fresh macOS machine:
 **Main Branch:**
 
 ```
-git clone https://github.com/suleymenb/mac-setup.git && cd mac-setup && chmod +x bootstrap/bootstrap.sh && ./bootstrap/bootstrap.sh
+git clone https://github.com/suleymenb/mac-setup-main.git && cd mac-setup-main && chmod +x bootstrap/bootstrap.sh verify.sh && ./bootstrap/bootstrap.sh
 ```
 
 **Dev Branch:**
 
 ```
-git clone -b dev https://github.com/suleymenb/mac-setup.git && cd mac-setup && chmod +x bootstrap/bootstrap.sh && ./bootstrap/bootstrap.sh
+git clone -b dev https://github.com/suleymenb/mac-setup-main.git && cd mac-setup-main && chmod +x bootstrap/bootstrap.sh verify.sh && ./bootstrap/bootstrap.sh
 ```
 
 This will:
@@ -159,7 +159,7 @@ terraform task at all. It now installs from the official `hashicorp/tap`.
 To update your configuration:
 
 ```
-cd ~/mac-setup
+cd ~/mac-setup-main
 git pull
 ansible-playbook playbook.yml
 ```
