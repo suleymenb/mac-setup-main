@@ -122,6 +122,10 @@ system_defaults:
     key: com.apple.swipescrolldirection
     type: bool
     value: false
+  - domain: com.apple.finder
+    key: AppleShowAllFiles
+    type: bool
+    value: true
 
   # More examples — uncomment what you want:
   # - domain: com.apple.dock
@@ -132,7 +136,4 @@ system_defaults:
   #   key: tilesize
   #   type: int
   #   value: 48
-  # - domain: com.apple.finder
-  #   key: AppleShowAllFiles
-  #   type: bool
-  #   value: true
+ 
