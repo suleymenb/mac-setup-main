@@ -11,7 +11,7 @@
   args:
     executable: /bin/bash
   environment:
-    PATH: "{{ brew_bin_paths }}:{{ ansible_env.PATH }}"
+    PATH: "{{ brew_bin_paths }}:{{ ansible_facts.env.PATH }}"
   changed_when: false
 
 - name: Install terraform tooling
@@ -42,7 +42,7 @@
 - name: Verify terraform is runnable
   command: terraform version
   environment:
-    PATH: "{{ brew_bin_paths }}:{{ ansible_env.PATH }}"
+    PATH: "{{ brew_bin_paths }}:{{ ansible_facts.env.PATH }}"
   register: terraform_version
   changed_when: false
   failed_when: false

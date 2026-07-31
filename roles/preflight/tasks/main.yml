@@ -7,8 +7,8 @@
 
 - name: Assert this is macOS
   assert:
-    that: ansible_system == 'Darwin'
-    fail_msg: "This playbook targets macOS only (detected: {{ ansible_system }})."
+    that: ansible_facts.system == 'Darwin'
+    fail_msg: "This playbook targets macOS only (detected: {{ ansible_facts.system }})."
     quiet: true
 
 - name: Assert Xcode Command Line Tools are installed
@@ -57,7 +57,7 @@
 - name: Check that Homebrew is available
   command: brew --version
   environment:
-    PATH: "{{ brew_bin_paths }}:{{ ansible_env.PATH }}"
+    PATH: "{{ brew_bin_paths }}:{{ ansible_facts.env.PATH }}"
   register: brew_check
   changed_when: false
   failed_when: false
@@ -96,7 +96,7 @@
 - name: Validate every required formula name resolves
   command: "brew info --formula {{ item }}"
   environment:
-    PATH: "{{ brew_bin_paths }}:{{ ansible_env.PATH }}"
+    PATH: "{{ brew_bin_paths }}:{{ ansible_facts.env.PATH }}"
   loop: "{{ brew_formulae + terraform_formulae + docker_formulae + kubernetes_formulae }}"
   register: formula_check
   changed_when: false
@@ -113,7 +113,7 @@
 - name: Validate every required cask name resolves
   command: "brew info --cask {{ item }}"
   environment:
-    PATH: "{{ brew_bin_paths }}:{{ ansible_env.PATH }}"
+    PATH: "{{ brew_bin_paths }}:{{ ansible_facts.env.PATH }}"
   loop: "{{ brew_casks + [docker_cask] }}"
   register: cask_check
   changed_when: false
@@ -130,7 +130,7 @@
 - name: Validate optional formula names
   command: "brew info --formula {{ item }}"
   environment:
-    PATH: "{{ brew_bin_paths }}:{{ ansible_env.PATH }}"
+    PATH: "{{ brew_bin_paths }}:{{ ansible_facts.env.PATH }}"
   loop: >-
     {{ terraform_formulae_optional + docker_formulae_optional + kubernetes_formulae_optional }}
   register: optional_check

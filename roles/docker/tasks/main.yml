@@ -63,7 +63,7 @@
 - name: Check whether the docker CLI is available
   command: docker --version
   environment:
-    PATH: "{{ brew_bin_paths }}:{{ ansible_env.PATH }}"
+    PATH: "{{ brew_bin_paths }}:{{ ansible_facts.env.PATH }}"
   register: docker_cli
   changed_when: false
   failed_when: false

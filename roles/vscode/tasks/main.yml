@@ -25,7 +25,7 @@
 - name: Install VS Code extensions
   command: "{{ code_bin }} --install-extension {{ item }} --force"
   environment:
-    PATH: "{{ brew_bin_paths }}:{{ ansible_env.PATH }}"
+    PATH: "{{ brew_bin_paths }}:{{ ansible_facts.env.PATH }}"
   loop: "{{ vscode_extensions }}"
   register: vscode_ext
   when: code_bin | length > 0
@@ -36,7 +36,7 @@
 
 - name: Ensure the VS Code User directory exists
   file:
-    path: "{{ ansible_env.HOME }}/Library/Application Support/Code/User"
+    path: "{{ ansible_facts.env.HOME }}/Library/Application Support/Code/User"
     state: directory
     mode: "0755"
   when: code_bin | length > 0
@@ -45,12 +45,12 @@
   block:
     - name: Check for settings.json
       stat:
-        path: "{{ ansible_env.HOME }}/Library/Application Support/Code/User/settings.json"
+        path: "{{ ansible_facts.env.HOME }}/Library/Application Support/Code/User/settings.json"
       register: vscode_settings_stat
 
     - name: Read settings.json
       slurp:
-        src: "{{ ansible_env.HOME }}/Library/Application Support/Code/User/settings.json"
+        src: "{{ ansible_facts.env.HOME }}/Library/Application Support/Code/User/settings.json"
       register: vscode_settings_raw
       when: vscode_settings_stat.stat.exists
 
@@ -70,7 +70,7 @@
 - name: Apply theme settings
   copy:
     content: "{{ vscode_settings_current | combine(vscode_theme_settings) | to_nice_json(indent=2) }}"
-    dest: "{{ ansible_env.HOME }}/Library/Application Support/Code/User/settings.json"
+    dest: "{{ ansible_facts.env.HOME }}/Library/Application Support/Code/User/settings.json"
     backup: true
     mode: "0644"
   when: code_bin | length > 0

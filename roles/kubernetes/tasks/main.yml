@@ -26,7 +26,7 @@
 
 - name: Ensure kubectl completion is loaded in zsh
   blockinfile:
-    path: "{{ ansible_env.HOME }}/.zshrc"
+    path: "{{ ansible_facts.env.HOME }}/.zshrc"
     marker: "# {mark} ANSIBLE_KUBECTL"
     create: true
     block: |
@@ -36,7 +36,7 @@
 - name: Verify kubectl is runnable
   command: kubectl version --client
   environment:
-    PATH: "{{ brew_bin_paths }}:{{ ansible_env.PATH }}"
+    PATH: "{{ brew_bin_paths }}:{{ ansible_facts.env.PATH }}"
   register: kubectl_version
   changed_when: false
   failed_when: false
