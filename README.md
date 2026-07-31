@@ -1,340 +1,157 @@
-# Mac Setup – Fully Automated macOS Bootstrap with Ansible
+# mac-setup
 
-This repository provides a fully automated macOS setup using Ansible.
-It installs Homebrew, development tools, Rust, Zsh configuration, and preferred applications
-in a reproducible and idempotent way.
+Reproducible macOS setup with Ansible. Installs Homebrew, dev tooling, apps and
+shell config, and applies a few system settings. Safe to re-run.
 
----
+## Quick start
 
-## 1. Requirements
+Fresh machine, one command:
 
-- macOS
-- Internet connection
-- Xcode Command Line Tools (required once)
-
-If Command Line Tools are not installed, run:
-
-```
-sudo touch /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress && sudo softwareupdate --install --recommended
+```bash
+cd ~ && git clone https://github.com/suleymenb/mac-setup-main.git && cd mac-setup-main && chmod +x bootstrap/bootstrap.sh verify.sh && ./bootstrap/bootstrap.sh
 ```
 
-Wait until installation completes before continuing.
+Clone from your home directory — `git` creates the subfolder. Cloning from
+inside an existing copy nests the repo in itself; `bootstrap.sh` refuses to run
+if it detects that.
 
-Verify installation:
+`bootstrap.sh` installs Homebrew, pipx and ansible-core, runs the playbook, then
+runs `verify.sh`.
 
-```
-xcode-select -p
-```
+**Requirement:** Xcode Command Line Tools. If `xcode-select -p` returns nothing:
 
-It should return:
-
-/Library/Developer/CommandLineTools
-
----
-
-## 2. Quick Start (Single Command)
-
-Run this on a fresh macOS machine:
-
-**Main Branch:**
-
-```
-git clone https://github.com/suleymenb/mac-setup-main.git && cd mac-setup-main && chmod +x bootstrap/bootstrap.sh verify.sh && ./bootstrap/bootstrap.sh
+```bash
+xcode-select --install
 ```
 
-**Dev Branch:**
+## What it installs
 
-```
-git clone -b dev https://github.com/suleymenb/mac-setup-main.git && cd mac-setup-main && chmod +x bootstrap/bootstrap.sh verify.sh && ./bootstrap/bootstrap.sh
-```
+| | |
+|---|---|
+| **CLI** | eza, dust, vim, mc, ansible-lint |
+| **Infra** | terraform (`hashicorp/tap`), terraform-docs, tflint |
+| **Containers** | Docker Desktop, docker-compose, lazydocker, dive |
+| **Kubernetes** | kubernetes-cli, helm, k9s, kubectx, minikube |
+| **Apps** | iTerm2, Rectangle, Stats, Visual Studio Code |
+| **Fonts** | JetBrains Mono, Meslo LG Nerd Font |
+| **Shell** | Oh My Zsh, powerlevel10k, autosuggestions, syntax-highlighting |
+| **VS Code** | The Digital Life theme, Material Icon Theme (both activated) |
+| **System** | Clears the Dock, dark mode, dark app icons |
 
-This will:
+Aliases: `rz` (reload zshrc), `ls`/`ll` (eza), `k` (kubectl), plus kubectl completion.
 
-1. Install Homebrew (if missing)
-2. Configure PATH
-3. Install pipx
-4. Install ansible-core
-5. Install required Ansible collections
-6. Execute the Ansible playbook
-7. Configure your macOS environment automatically
+## Customising
 
----
+**Edit `group_vars/all.yml`. Nothing else.** The roles install from those lists,
+preflight validates them, and `verify.sh` reads the same file — so they cannot
+drift apart.
 
-## 3. What This Setup Configures
+Lists ending in `_optional` are best-effort: if Homebrew renames or moves a
+package, the run logs `Skipped ...` and continues.
 
-### Core Tooling
-- Homebrew
-- pipx
-- ansible-core
-- ansible-lint
+VS Code settings are merged into your existing `settings.json`, never
+overwritten, and the original is kept as `.bak`.
 
-### Infrastructure
-- Terraform (via the official `hashicorp/tap`)
-- tflint
-- terraform-docs
-- Docker Desktop, docker-compose, lazydocker, dive
-- kubectl, helm, k9s, kubectx, minikube
+## Running
 
-### Applications
-- iTerm2
-- Rectangle
-- Stats
-- Visual Studio Code (incl. the `code` CLI)
-
-### VS Code Extensions
-- The Digital Life theme (`xcad2k.vscode-thedigitallife`) — set as color theme
-- Material Icon Theme (`PKief.material-icon-theme`) — set as file icon theme
-
-Both are activated automatically in `settings.json`. Existing settings are
-merged, not overwritten, and the previous file is kept as a `.bak`.
-
-### CLI Tools
-- eza
-- dust (du-dust)
-- vim (vimdiff)
-- midnight commander
-
-### Fonts
-- JetBrains Mono
-- Meslo LG Nerd Font
-
-### Shell Configuration
-- Oh My Zsh
-- Powerlevel10k theme
-- Plugins:
-  - git
-  - sudo
-  - zsh-autosuggestions
-  - zsh-syntax-highlighting
-- Custom aliases:
-  - `rz` - reload zshrc
-  - `ls` - eza with icons and grouped directories
-  - `ll` - eza long format with all files and icons
-  - `k` - kubectl
-- kubectl shell completion
-- Brew auto-updates
-
-### System (runs last)
-- Clears every pinned app from the Dock
-- Applies any macOS defaults listed in `system_defaults` (empty by default)
-- Dark mode (`AppleInterfaceStyle`)
-- Dark app icons (`AppleIconAppearanceTheme = RegularDark`, macOS 26+)
-- Restarts Dock, Finder and SystemUIServer — only when something changed
-
-This role runs **last** because it restarts Dock and Finder — everything else
-should be installed and settled first. Restarts go through Ansible handlers, so
-they only fire when a setting actually changed. A second run restarts nothing.
-
-To add a setting, put it in `system_defaults` in `group_vars/all.yml`; the file
-has commented examples for Dock autohide, icon size, Finder hidden files and
-dark mode. To find the domain and key of any setting, change it in System
-Settings and diff `defaults read` before and after.
-
-Note that some settings (anything driven through System Events / AppleScript)
-need macOS Automation permission and will hang under Ansible. The `osx_defaults`
-module writes the preference directly and avoids that entirely.
-
----
-
-## 4. Project Structure
-
-```
-mac-setup-main/
-├── bootstrap/
-│   └── bootstrap.sh          # Initial setup script
-├── group_vars/
-│   └── all.yml               # Single source of truth: every package name
-├── roles/
-│   ├── preflight/tasks/main.yml   # Validates everything before installing
-│   ├── homebrew/tasks/main.yml    # Homebrew, formulae, casks, fonts
-│   ├── terraform/tasks/main.yml   # HashiCorp tap, terraform, tflint
-│   ├── docker/tasks/main.yml      # Docker Desktop + CLI tooling
-│   ├── kubernetes/tasks/main.yml  # kubectl, helm, k9s, minikube
-│   ├── vscode/tasks/main.yml      # VS Code extensions + theme settings
-│   ├── zsh/tasks/main.yml         # Oh My Zsh, theme, plugins, aliases
-│   └── system/                    # Dock + macOS defaults — RUNS LAST
-│       ├── tasks/main.yml
-│       └── handlers/main.yml      # Restart Dock / Finder, only when changed
-├── verify.sh                 # Post-run health check
-├── playbook.yml              # Main Ansible playbook
-├── inventory.ini             # Ansible inventory
-├── ansible.cfg               # Ansible configuration
-└── README.md                 # This file
+```bash
+ansible-playbook playbook.yml                    # everything
+ansible-playbook playbook.yml --tags terraform   # one role
+ansible-playbook playbook.yml --check            # dry run
+./verify.sh                                      # health check
+ansible-lint                                     # lint before committing
 ```
 
----
+Tags: `homebrew`, `terraform`, `docker`, `kubernetes`, `vscode`, `zsh`, `system`.
+Preflight always runs.
 
-## 4a. Preflight Checks
+## How it fails
 
-The `preflight` role runs before anything is installed and validates:
+**Preflight** runs first and validates macOS, Xcode CLT, disk space, network,
+Homebrew, sudo, and that every package name in `group_vars/all.yml` actually
+resolves. Bad names are all reported at once, in seconds, before anything is
+installed. If preflight fails, nothing else runs — that is deliberate.
 
-- macOS, Xcode Command Line Tools, free disk space
-- Network reachability of github.com, ghcr.io and formulae.brew.sh
-- Homebrew present and on PATH
-- Whether sudo is cached (Docker Desktop needs root)
-- **That every formula and cask name in `group_vars/all.yml` actually resolves**
-
-That last check is the important one. Homebrew renames and moves packages —
-`tflint` left homebrew-core, the `docker` cask became `docker-desktop`,
-`kubectl` is only an alias for `kubernetes-cli`. Previously each of those
-aborted the run minutes in, one at a time. Preflight reports *all* bad names at
-once, in seconds, before a single package is installed.
-
-It is tagged `always`, so it runs even with `--tags docker`.
-
----
-
-## 4b. One Failing Role No Longer Hides the Rest
-
-Every role is wrapped in `block`/`rescue` (see any `roles/*/tasks/main.yml`).
-If a role fails, the failure is recorded and the play continues with the next
-role. At the end you get one report:
+**Every other role** is wrapped in `block`/`rescue`. A failing role is recorded
+and the play continues, so one broken role never hides the state of the rest.
+At the end you get a single report and a non-zero exit:
 
 ```
 2 role(s) failed:
   - terraform — at task "Verify terraform is runnable"
     terraform is installed but not reachable on PATH
   - docker — at task "Fail loudly if Docker Desktop is still missing"
-    Docker Desktop did not install
 
 Re-run just the failed ones, for example:
   ansible-playbook playbook.yml --tags terraform,docker
 ```
 
-The run still exits non-zero, so scripts and CI notice — but only after every
-role has had its turn.
-
-Why this matters: Ansible normally aborts the whole play on a fatal error. With
-`system` deliberately running last, any earlier failure meant it silently never
-ran at all. `preflight` is intentionally *not* wrapped — if the environment is
-broken there is no point continuing.
-
----
-
-## 4c. Verifying the Installation
-
-`bootstrap.sh` runs this automatically at the end, but you can run it any time:
-
-```
-./verify.sh
-```
-
-It checks every item the playbook installs — brew formulae, casks, fonts,
-terraform/docker/kubernetes binaries, Oh My Zsh, each `.zshrc` line, and the
-macOS defaults — and prints a PASS / WARN / FAIL line per item plus a summary.
-It exits non-zero if anything failed, so it works in CI too.
-
-**Why terraform was missing:** HashiCorp moved Terraform to the Business Source
-License, so Homebrew dropped it from homebrew-core. The old setup never had a
-terraform task at all. It now installs from the official `hashicorp/tap`.
-
----
-
-## 5. Updating Your System
-
-To update your configuration:
-
-```
-cd ~/mac-setup-main
-git pull
-ansible-playbook playbook.yml
-```
-
-Or run specific roles with tags:
-
-```
-ansible-playbook playbook.yml --tags homebrew
-ansible-playbook playbook.yml --tags terraform
-ansible-playbook playbook.yml --tags docker
-ansible-playbook playbook.yml --tags kubernetes
-ansible-playbook playbook.yml --tags vscode
-ansible-playbook playbook.yml --tags zsh
-ansible-playbook playbook.yml --tags system
-```
-
-Lint the playbook before committing:
-
-```
-ansible-lint
-```
-
----
-
-## 6. Design Principles
-
-- **Idempotent configuration** - Safe to run multiple times
-- **Reproducible environment** - Same setup every time
-- **Infrastructure-as-Code approach** - Everything is version controlled
-- **Clean separation of concerns** - Organized by role (homebrew, terraform, docker, kubernetes, vscode, zsh)
-- **Version-controlled system setup** - Track all changes in git
-
-This repository serves as a reproducible macOS baseline for development environments.
-
----
-
-## 7. Customization
-
-**To add or remove a package, edit `group_vars/all.yml` and nothing else.**
-The roles install from those lists, the preflight role validates them, and
-`verify.sh` reads the same file — so the three can never drift apart.
-
-Lists ending in `_optional` are best-effort: if a name stops resolving because
-Homebrew renamed or moved it, the run logs a "Skipped" line and carries on
-instead of aborting.
-
-Other files worth editing:
-
-- `roles/zsh/tasks/main.yml` - Shell configuration and aliases
-- `roles/vscode/tasks/main.yml` - How VS Code settings are merged
-- `playbook.yml` - Include/exclude roles
-
----
+**`verify.sh`** checks every installed item independently of Ansible and prints
+PASS / WARN / FAIL per item. Exits non-zero on failure, so it works in CI.
 
 ## Troubleshooting
 
-### Homebrew asks for confirmation during the run
+**Docker Desktop: `sudo: a terminal is required to read the password`**
+Its cask needs root to symlink helpers into `/usr/local/bin`. Either type your
+password at the playbook prompt, or prime sudo first:
 
-This is expected. The setup runs interactively: Homebrew asks you to press
-RETURN once when it installs itself, and may ask `[y/n]` before installing
-formulae that pull in dependencies. Just confirm when prompted.
-
-You are also asked for your macOS password once on a fresh machine, because
-Homebrew needs `sudo` to create `/opt/homebrew`.
-
-### `sudo: a terminal is required to read the password`
-
-Docker Desktop's cask symlinks helper binaries into `/usr/local/bin`, which
-needs root. Homebrew calls `sudo` itself, and Ansible gives it no terminal to
-prompt on. There is no way around the root requirement — `--no-binaries` does
-not help, Homebrew links `/usr/local/bin/kubectl` regardless.
-
-Two ways to satisfy it:
-
-1. **Type your password at the playbook prompt.** The play asks for it up front
-   and passes it to Homebrew via `SUDO_ASKPASS`. Note that `-K` does *not* work
-   here: it does not populate `ansible_become_password` for this module.
-2. **Prime the sudo cache first**, then press Enter to skip the prompt:
-
-```
+```bash
 sudo -v && ansible-playbook playbook.yml
 ```
 
-`bootstrap.sh` does option 2 for you automatically.
+`-K` does not work here — it does not populate `ansible_become_password` for
+this module.
 
----
+**Dark mode does not apply to open apps**
+The setting is written to `AppleInterfaceStyle` and persists. Running apps pick
+it up after a logout. The AppleScript alternative needs macOS Automation
+permission and hangs without it, so it is off by default
+(`system_dark_mode_live_apply`).
 
-## TO DO
+**`terraform: command not found` after a successful run**
+The binary is installed but not linked or not on PATH:
 
-- [x] brew install ansible-lint
-- [x] remove rust (du-dust now comes from the brew `dust` formula, so nothing needs cargo)
-- [x] install terraform (via `hashicorp/tap` — this was the broken one)
-- [x] install docker
-- [x] install kubernetes tooling
-- [x] add a post-run verification script (`verify.sh`)
-- [ ] pin tool versions for fully reproducible builds
-- [ ] add a CI workflow that runs `ansible-lint` on push
+```bash
+brew link --overwrite hashicorp/tap/terraform
+eval "$(/opt/homebrew/bin/brew shellenv)"
+```
 
----
+**Homebrew asks for confirmation**
+Expected. Confirm when prompted; you are also asked for your macOS password once
+because Homebrew needs sudo to create `/opt/homebrew`.
+
+## Layout
+
+```
+group_vars/all.yml          every package name — the only file to edit
+playbook.yml                role order + final failure report
+bootstrap/bootstrap.sh      first-run setup, guards against nested clones
+verify.sh                   post-run health check
+roles/
+  preflight/                validates everything up front (not wrapped)
+  homebrew/ terraform/ docker/ kubernetes/ vscode/ zsh/ system/
+    tasks/main.yml          block/rescue wrapper
+    tasks/tasks.yml         the actual work
+  system/handlers/          restart Dock / Finder / SystemUIServer when changed
+```
+
+`system` runs last because it restarts Dock and Finder.
+
+## Notes
+
+- macOS system settings live in `system_defaults` in `group_vars/all.yml`.
+  Find a domain and key by changing the setting in System Settings and diffing
+  `defaults read` before and after.
+- Terraform is not in homebrew-core (Business Source License); it comes from
+  `hashicorp/tap`. tflint likewise lives in `terraform-linters/tap`.
+- Restarts are Ansible handlers, so a second run restarts nothing.
+
+## To do
+
+- [ ] Pin tool versions
+- [ ] CI on a macOS runner, running the playbook twice to prove idempotency
+- [ ] Move the `brew update` out of `.zshrc` into a launchd job
+- [ ] Retries on network-bound tasks
 
 ## License
 
