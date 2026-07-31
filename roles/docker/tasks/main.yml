@@ -2,41 +2,24 @@
 # Docker Desktop's cask symlinks helper binaries into /usr/local/bin, which
 # needs root. Homebrew shells out to `sudo` itself, and Ansible gives it no
 # terminal to prompt on — hence "sudo: a terminal is required to read the
-# password". Priming the sudo credential cache before the run fixes it.
-- name: Check whether sudo credentials are cached
-  command: sudo -n true
-  register: sudo_cached
-  changed_when: false
-  failed_when: false
-
+# password".
 - name: Check whether Docker.app is already present
   stat:
     path: /Applications/Docker.app
   register: docker_app
 
-# Path A — sudo is available, so do the full install including the
-# /usr/local/bin helper symlinks.
-- name: Install Docker Desktop (with helper binaries)
+# The cask needs root either way. There is no --no-binaries escape hatch:
+# Homebrew links /usr/local/bin/kubectl regardless. So either sudo is already
+# cached, or we hand Homebrew the password through SUDO_ASKPASS.
+- name: Install Docker Desktop
   community.general.homebrew_cask:
     name: docker-desktop
     state: present
-  when:
-    - not docker_app.stat.exists
-    - sudo_cached.rc == 0
-  register: docker_cask_sudo
-
-# Path B — no sudo. --no-binaries skips exactly the symlinks that need root,
-# so the app itself still installs. Docker Desktop sets up its CLI in
-# ~/.docker/bin on first launch anyway.
-- name: Install Docker Desktop (without helper binaries, no sudo needed)
-  community.general.homebrew_cask:
-    name: docker-desktop
-    state: present
-    install_options: no-binaries
-  when:
-    - not docker_app.stat.exists
-    - sudo_cached.rc != 0
-  register: docker_cask_nosudo
+    sudo_password: "{{ mac_sudo_password if (mac_sudo_password | default('') | length > 0) else omit }}"
+  when: not docker_app.stat.exists
+  register: docker_cask
+  failed_when: false
+  no_log: true
 
 - name: Re-check that Docker.app landed
   stat:
@@ -46,21 +29,11 @@
 - name: Fail loudly if Docker Desktop is still missing
   fail:
     msg: >-
-      Docker Desktop did not install. Try priming sudo and re-running:
-      sudo -v && ansible-playbook playbook.yml --tags docker
-      — or install it manually with: brew install --cask docker-desktop
+      Docker Desktop did not install — Homebrew needs root to link its helper
+      binaries into /usr/local/bin. Fix it in one of two ways:
+      (1) re-run and type your macOS password at the prompt, or
+      (2) sudo -v && ansible-playbook playbook.yml --tags docker
   when: not docker_app_after.stat.exists
-
-- name: Note that helper binaries were skipped
-  debug:
-    msg: >-
-      Docker Desktop was installed without the /usr/local/bin helper symlinks
-      because sudo was not available. Open Docker Desktop once and it will set
-      up the docker CLI itself. To get the symlinks too, run:
-      sudo -v && ansible-playbook playbook.yml --tags docker
-  when:
-    - sudo_cached.rc != 0
-    - docker_app_after.stat.exists
 
 - name: Install docker CLI tooling
   community.general.homebrew:

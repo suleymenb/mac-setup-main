@@ -3,6 +3,19 @@
   gather_facts: true
   become: false
 
+  # Docker Desktop's cask symlinks helper binaries into /usr/local/bin and
+  # shells out to sudo itself. Ansible gives it no terminal to prompt on, so
+  # the password has to be handed to Homebrew via SUDO_ASKPASS.
+  # Note: -K does NOT populate this, which is why we prompt explicitly.
+  vars_prompt:
+    - name: mac_sudo_password
+      prompt: |-
+        macOS password (needed for Docker Desktop)
+        Press Enter to skip if you already ran "sudo -v"
+      private: true
+      confirm: false
+      default: ""
+
   roles:
     - role: homebrew
       tags: [homebrew]

@@ -221,13 +221,21 @@ Homebrew needs `sudo` to create `/opt/homebrew`.
 
 Docker Desktop's cask symlinks helper binaries into `/usr/local/bin`, which
 needs root. Homebrew calls `sudo` itself, and Ansible gives it no terminal to
-prompt on. `bootstrap.sh` handles this by caching your sudo credential up front.
+prompt on. There is no way around the root requirement — `--no-binaries` does
+not help, Homebrew links `/usr/local/bin/kubectl` regardless.
 
-If you run the playbook directly, prime sudo first:
+Two ways to satisfy it:
+
+1. **Type your password at the playbook prompt.** The play asks for it up front
+   and passes it to Homebrew via `SUDO_ASKPASS`. Note that `-K` does *not* work
+   here: it does not populate `ansible_become_password` for this module.
+2. **Prime the sudo cache first**, then press Enter to skip the prompt:
 
 ```
 sudo -v && ansible-playbook playbook.yml
 ```
+
+`bootstrap.sh` does option 2 for you automatically.
 
 ---
 
