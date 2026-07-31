@@ -108,6 +108,32 @@ Tags: `homebrew`, `terraform`, `docker`, `kubernetes`, `aws`, `vscode`, `zsh`,
 AWS credentials are deliberately not managed here — they are secrets. After the
 run: `aws configure sso` (recommended) or `aws configure`.
 
+## Progress
+
+Each role prints where it is when it starts:
+
+```
+TASK [aws : Progress]
+ok: [localhost] => [6/9] aws         █████████████░░░░░░░ 67%
+```
+
+Progress is per **role**, not per task, and that is deliberate: the role
+wrappers use `include_tasks`, a dynamic include, so Ansible cannot know the
+total number of tasks in advance. A task percentage would be invented. The nine
+roles are known, so that count is real.
+
+Want a task counter as well — `TASK 12/47` — enable the callback that ships with
+`community.general`, which is already a dependency:
+
+```ini
+# ansible.cfg
+[defaults]
+stdout_callback = community.general.counter_enabled
+```
+
+Order lives in `mac_role_order` in `group_vars/all.yml`; keep it in sync with
+`roles:` in `playbook.yml`.
+
 ## How it fails
 
 **Preflight** runs first and validates macOS, Xcode CLT, disk space, network,

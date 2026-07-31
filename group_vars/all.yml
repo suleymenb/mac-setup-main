@@ -13,6 +13,24 @@
 # need this on PATH explicitly.
 brew_bin_paths: "/opt/homebrew/bin:/usr/local/bin"
 
+# --- progress ----------------------------------------------------------------
+# Drives the progress bar each role prints when it starts. Keep this in the
+# same order as the roles: list in playbook.yml.
+#
+# Deliberately role-level, not task-level: the role wrappers use include_tasks,
+# which is a dynamic include, so Ansible genuinely cannot know the total number
+# of tasks up front. A task percentage would be made up. These nine are known.
+mac_role_order:
+  - preflight
+  - homebrew
+  - terraform
+  - docker
+  - kubernetes
+  - aws
+  - vscode
+  - zsh
+  - system
+
 # --- preflight ---------------------------------------------------------------
 preflight_min_free_gb: 10
 preflight_hosts:

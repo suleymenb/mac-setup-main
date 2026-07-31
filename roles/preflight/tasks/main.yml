@@ -5,6 +5,18 @@
 # one problem at a time. This role validates the whole environment and every
 # package name up front, so you get one list of everything that is wrong.
 
+- name: "Progress"
+  vars:
+    _pos: "{{ mac_role_order.index('preflight') + 1 }}"
+    _total: "{{ mac_role_order | length }}"
+    _pct: "{{ ((_pos | int) * 100 / (_total | int)) | round | int }}"
+  debug:
+    msg: >-
+      [{{ _pos }}/{{ _total }}] {{ '%-11s' | format('preflight') }}
+      {{ '█' * ((_pct | int) // 5) }}{{ '░' * (20 - (_pct | int) // 5) }}
+      {{ _pct }}%
+  tags: [always]
+
 - name: Assert this is macOS
   assert:
     that: ansible_facts.system == 'Darwin'

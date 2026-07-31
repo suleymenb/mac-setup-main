@@ -5,6 +5,18 @@
 # play continues with the next role, instead of aborting everything after it.
 # Without this, one broken role hides the state of every role that follows —
 # which is exactly how the system role silently never ran.
+- name: "Progress"
+  vars:
+    _pos: "{{ mac_role_order.index('kubernetes') + 1 }}"
+    _total: "{{ mac_role_order | length }}"
+    _pct: "{{ ((_pos | int) * 100 / (_total | int)) | round | int }}"
+  debug:
+    msg: >-
+      [{{ _pos }}/{{ _total }}] {{ '%-11s' | format('kubernetes') }}
+      {{ '\u2588' * ((_pct | int) // 5) }}{{ '\u2591' * (20 - (_pct | int) // 5) }}
+      {{ _pct }}%
+  tags: [always]
+
 - name: kubernetes
   block:
     - name: Run the kubernetes tasks
