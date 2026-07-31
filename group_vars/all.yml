@@ -35,8 +35,8 @@ brew_formulae:
   - mc
   - ansible-lint
 
-brew_formulae_absent:
-  - rust
+# brew_formulae_absent:
+#   - 
 
 brew_casks:
   - iterm2
