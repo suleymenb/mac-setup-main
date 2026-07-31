@@ -1,0 +1,30 @@
+---
+- name: Install kubernetes CLI tooling
+  community.general.homebrew:
+    name:
+      - kubectl
+      - helm
+      - k9s
+      - kubectx
+      - minikube
+    state: present
+    update_homebrew: false
+
+- name: Ensure kubectl completion is loaded in zsh
+  blockinfile:
+    path: "{{ ansible_env.HOME }}/.zshrc"
+    marker: "# {mark} ANSIBLE_KUBECTL"
+    create: true
+    block: |
+      command -v kubectl >/dev/null 2>&1 && source <(kubectl completion zsh)
+      alias k='kubectl'
+
+- name: Verify kubectl is runnable
+  command: kubectl version --client
+  register: kubectl_version
+  changed_when: false
+  failed_when: false
+
+- name: Show kubectl version
+  debug:
+    msg: "{{ kubectl_version.stdout_lines | first | default('kubectl not reporting a version') }}"

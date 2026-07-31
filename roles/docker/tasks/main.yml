@@ -1,0 +1,27 @@
+---
+- name: Install Docker Desktop
+  community.general.homebrew_cask:
+    name: docker-desktop
+    state: present
+
+- name: Install docker CLI tooling
+  community.general.homebrew:
+    name:
+      - docker-compose
+      - lazydocker
+      - dive
+    state: present
+    update_homebrew: false
+
+- name: Check whether the docker CLI is available
+  command: docker --version
+  register: docker_cli
+  changed_when: false
+  failed_when: false
+
+- name: Note if Docker Desktop still needs a first manual launch
+  debug:
+    msg: >-
+      Docker Desktop is installed but the CLI is not on PATH yet.
+      Open Docker Desktop once from Applications to finish setup.
+  when: docker_cli.rc != 0

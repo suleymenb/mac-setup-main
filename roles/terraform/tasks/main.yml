@@ -1,0 +1,42 @@
+---
+# Terraform is no longer shipped in homebrew-core (HashiCorp moved it to the
+# Business Source License). It must come from HashiCorp's official tap.
+# This is why previous runs left terraform missing/broken.
+
+- name: Add HashiCorp homebrew tap
+  community.general.homebrew_tap:
+    name: hashicorp/tap
+    state: present
+
+- name: Unlink any stale homebrew-core terraform
+  shell: |
+    set -uo pipefail
+    if brew list --formula 2>/dev/null | grep -qx 'terraform'; then
+      brew unlink terraform || true
+    fi
+  args:
+    executable: /bin/bash
+  changed_when: false
+
+- name: Install terraform from HashiCorp tap
+  community.general.homebrew:
+    name: hashicorp/tap/terraform
+    state: present
+    update_homebrew: false
+
+- name: Install terraform helper tooling
+  community.general.homebrew:
+    name:
+      - tflint
+      - terraform-docs
+    state: present
+    update_homebrew: false
+
+- name: Verify terraform is on PATH and runnable
+  command: terraform version
+  register: terraform_version
+  changed_when: false
+
+- name: Show terraform version
+  debug:
+    msg: "{{ terraform_version.stdout_lines | first }}"

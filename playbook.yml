@@ -1,0 +1,29 @@
+- name: Mac setup
+  hosts: mac
+  gather_facts: true
+  become: false
+
+  # Applies to every task in every role below, so no brew command can
+  # stop and wait for a y/n. HOMEBREW_NO_ASK is the one that silences
+  # "Do you want to proceed with the installation?" — NONINTERACTIVE
+  # only covers the Homebrew installer script itself.
+  environment:
+    NONINTERACTIVE: "1"
+    HOMEBREW_NO_ASK: "1"
+    HOMEBREW_NO_AUTO_UPDATE: "1"
+    HOMEBREW_NO_INSTALL_CLEANUP: "1"
+    HOMEBREW_NO_ENV_HINTS: "1"
+
+  roles:
+    - role: homebrew
+      tags: [homebrew]
+    - role: terraform
+      tags: [terraform]
+    - role: docker
+      tags: [docker]
+    - role: kubernetes
+      tags: [kubernetes]
+    - role: zsh
+      tags: [zsh]
+    - role: system
+      tags: [system]

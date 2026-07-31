@@ -1,0 +1,248 @@
+# Mac Setup – Fully Automated macOS Bootstrap with Ansible
+
+This repository provides a fully automated macOS setup using Ansible.
+It installs Homebrew, development tools, Rust, Zsh configuration, and preferred applications
+in a reproducible and idempotent way.
+
+---
+
+## 1. Requirements
+
+- macOS
+- Internet connection
+- Xcode Command Line Tools (required once)
+
+If Command Line Tools are not installed, run:
+
+```
+sudo touch /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress && sudo softwareupdate --install --recommended
+```
+
+Wait until installation completes before continuing.
+
+Verify installation:
+
+```
+xcode-select -p
+```
+
+It should return:
+
+/Library/Developer/CommandLineTools
+
+---
+
+## 2. Quick Start (Single Command)
+
+Run this on a fresh macOS machine:
+
+**Main Branch:**
+
+```
+git clone https://github.com/suleymenb/mac-setup.git && cd mac-setup && chmod +x bootstrap/bootstrap.sh && ./bootstrap/bootstrap.sh
+```
+
+**Dev Branch:**
+
+```
+git clone -b dev https://github.com/suleymenb/mac-setup.git && cd mac-setup && chmod +x bootstrap/bootstrap.sh && ./bootstrap/bootstrap.sh
+```
+
+This will:
+
+1. Install Homebrew (if missing)
+2. Configure PATH
+3. Install pipx
+4. Install ansible-core
+5. Install required Ansible collections
+6. Execute the Ansible playbook
+7. Configure your macOS environment automatically
+
+---
+
+## 3. What This Setup Configures
+
+### Core Tooling
+- Homebrew
+- pipx
+- ansible-core
+- ansible-lint
+
+### Infrastructure
+- Terraform (via the official `hashicorp/tap`)
+- tflint
+- terraform-docs
+- Docker Desktop, docker-compose, lazydocker, dive
+- kubectl, helm, k9s, kubectx, minikube
+
+### Applications
+- iTerm2
+- Rectangle
+- Stats
+- Zed
+
+### CLI Tools
+- eza
+- dust (du-dust)
+- vim (vimdiff)
+- midnight commander
+
+### Fonts
+- JetBrains Mono
+- Meslo LG Nerd Font
+
+### Shell Configuration
+- Oh My Zsh
+- Powerlevel10k theme
+- Plugins:
+  - git
+  - sudo
+  - zsh-autosuggestions
+  - zsh-syntax-highlighting
+- Custom aliases:
+  - `rz` - reload zshrc
+  - `ls` - eza with icons and grouped directories
+  - `ll` - eza long format with all files and icons
+  - `k` - kubectl
+- kubectl shell completion
+
+### System Customization
+- Dark mode enablement
+- Finder hidden files visibility
+- Brew auto-updates
+
+---
+
+## 4. Project Structure
+
+```
+mac-setup/
+├── bootstrap/
+│   └── bootstrap.sh          # Initial setup script
+├── roles/
+│   ├── homebrew/tasks/main.yml    # Homebrew, formulae, casks, fonts
+│   ├── terraform/tasks/main.yml   # HashiCorp tap, terraform, tflint
+│   ├── docker/tasks/main.yml      # Docker Desktop + CLI tooling
+│   ├── kubernetes/tasks/main.yml  # kubectl, helm, k9s, minikube
+│   ├── zsh/tasks/main.yml         # Oh My Zsh, theme, plugins, aliases
+│   └── system/tasks/main.yml      # macOS system customization
+├── verify.sh                 # Post-run health check
+├── playbook.yml              # Main Ansible playbook
+├── inventory.ini             # Ansible inventory
+├── ansible.cfg               # Ansible configuration
+└── README.md                 # This file
+```
+
+---
+
+## 4a. Verifying the Installation
+
+`bootstrap.sh` runs this automatically at the end, but you can run it any time:
+
+```
+./verify.sh
+```
+
+It checks every item the playbook installs — brew formulae, casks, fonts,
+terraform/docker/kubernetes binaries, Oh My Zsh, each `.zshrc` line, and the
+macOS defaults — and prints a PASS / WARN / FAIL line per item plus a summary.
+It exits non-zero if anything failed, so it works in CI too.
+
+**Why terraform was missing:** HashiCorp moved Terraform to the Business Source
+License, so Homebrew dropped it from homebrew-core. The old setup never had a
+terraform task at all. It now installs from the official `hashicorp/tap`.
+
+---
+
+## 5. Updating Your System
+
+To update your configuration:
+
+```
+cd ~/mac-setup
+git pull
+ansible-playbook playbook.yml
+```
+
+Or run specific roles with tags:
+
+```
+ansible-playbook playbook.yml --tags homebrew
+ansible-playbook playbook.yml --tags terraform
+ansible-playbook playbook.yml --tags docker
+ansible-playbook playbook.yml --tags kubernetes
+ansible-playbook playbook.yml --tags zsh
+ansible-playbook playbook.yml --tags system
+```
+
+Lint the playbook before committing:
+
+```
+ansible-lint
+```
+
+---
+
+## 6. Design Principles
+
+- **Idempotent configuration** - Safe to run multiple times
+- **Reproducible environment** - Same setup every time
+- **Infrastructure-as-Code approach** - Everything is version controlled
+- **Clean separation of concerns** - Organized by role (homebrew, zsh, system)
+- **Version-controlled system setup** - Track all changes in git
+
+This repository serves as a reproducible macOS baseline for development environments.
+
+---
+
+## 7. Customization
+
+You can customize your setup by editing:
+
+- `roles/homebrew/tasks/main.yml` - Add/remove packages and casks
+- `roles/zsh/tasks/main.yml` - Modify shell configuration, aliases, and cargo tools
+- `roles/system/tasks/main.yml` - Add more macOS system customizations
+- `playbook.yml` - Include/exclude roles
+
+---
+
+## Troubleshooting
+
+### Homebrew keeps asking for confirmation
+
+Recent Homebrew versions default to **ask mode**, so `brew install` stops at
+`Do you want to proceed with the installation? [y/n]` whenever a formula pulls
+in dependencies. These are two *different* prompts with two *different* fixes:
+
+| Prompt | Comes from | Fix |
+| --- | --- | --- |
+| `Press RETURN/ENTER to continue` | Homebrew installer script | `NONINTERACTIVE=1` |
+| `Do you want to proceed with the installation? [y/n]` | `brew install` / `brew upgrade` | `HOMEBREW_NO_ASK=1` |
+
+`NONINTERACTIVE=1` does **not** silence the second one — that catches a lot of
+people out. Both are now set in `bootstrap.sh` and as a play-level
+`environment:` block in `playbook.yml`, so the whole run is unattended.
+
+For one-off manual installs you can also use `brew install -y <formula>`.
+
+You will still be asked for your macOS password once on a fresh machine, because
+Homebrew needs `sudo` to create `/opt/homebrew`. That one is unavoidable.
+
+---
+
+## TO DO
+
+- [x] brew install ansible-lint
+- [x] remove rust (du-dust now comes from the brew `dust` formula, so nothing needs cargo)
+- [x] install terraform (via `hashicorp/tap` — this was the broken one)
+- [x] install docker
+- [x] install kubernetes tooling
+- [x] add a post-run verification script (`verify.sh`)
+- [ ] pin tool versions for fully reproducible builds
+- [ ] add a CI workflow that runs `ansible-lint` on push
+
+---
+
+## License
+
+MIT

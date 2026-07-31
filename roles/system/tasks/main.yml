@@ -1,0 +1,14 @@
+# System Appearance
+- name: Enable dark mode
+  shell: osascript -e 'tell app "System Events" to tell appearance preferences to set dark mode to true'
+  changed_when: false
+
+# System Preferences
+- name: Show hidden files in Finder
+  shell: defaults write com.apple.finder AppleShowAllFiles -bool true
+  changed_when: false
+
+- name: Restart Finder to apply changes
+  shell: killall Finder
+  changed_when: false
+  ignore_errors: true
