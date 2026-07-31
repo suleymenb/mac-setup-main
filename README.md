@@ -46,6 +46,8 @@ xcode-select --install
 
 ## What it installs
 
+|||
+|--|--|
 | **CLI** | eza, dust, vim, mc, ansible-lint |
 | **Infra** | terraform (`hashicorp/tap`), terraform-docs, tflint |
 | **Containers** | Docker Desktop, docker-compose, lazydocker, dive |
