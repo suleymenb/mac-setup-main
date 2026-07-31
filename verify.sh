@@ -150,6 +150,7 @@ fi
 section "Docker"
 
 check_cask "docker-desktop" "Docker Desktop"
+check_dir "Docker.app present" "/Applications/Docker.app"
 check_formula docker-compose
 
 for f in lazydocker dive; do
