@@ -217,6 +217,18 @@ formulae that pull in dependencies. Just confirm when prompted.
 You are also asked for your macOS password once on a fresh machine, because
 Homebrew needs `sudo` to create `/opt/homebrew`.
 
+### `sudo: a terminal is required to read the password`
+
+Docker Desktop's cask symlinks helper binaries into `/usr/local/bin`, which
+needs root. Homebrew calls `sudo` itself, and Ansible gives it no terminal to
+prompt on. `bootstrap.sh` handles this by caching your sudo credential up front.
+
+If you run the playbook directly, prime sudo first:
+
+```
+sudo -v && ansible-playbook playbook.yml
+```
+
 ---
 
 ## TO DO

@@ -24,8 +24,15 @@
     state: present
     update_homebrew: false
 
-# tflint was moved out of homebrew-core to the terraform-linters tap,
-# so the bare name "tflint" no longer resolves.
+# tflint was moved out of homebrew-core to the terraform-linters tap.
+# Homebrew does NOT auto-tap from a qualified name, so tap it explicitly first.
+- name: Add terraform-linters tap
+  community.general.homebrew_tap:
+    name: terraform-linters/tap
+    state: present
+  register: tflint_tap
+  failed_when: false
+
 - name: Install tflint from the terraform-linters tap
   community.general.homebrew:
     name: terraform-linters/tap/tflint

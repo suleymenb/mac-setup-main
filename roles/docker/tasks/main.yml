@@ -1,8 +1,28 @@
 ---
+# Docker Desktop's cask symlinks helper binaries into /usr/local/bin, which
+# needs root. Homebrew shells out to `sudo` itself, and Ansible gives it no
+# terminal to prompt on — hence "sudo: a terminal is required to read the
+# password". Priming the sudo credential cache before the run fixes it.
+- name: Check whether sudo credentials are cached
+  command: sudo -n true
+  register: sudo_cached
+  changed_when: false
+  failed_when: false
+
 - name: Install Docker Desktop
   community.general.homebrew_cask:
     name: docker-desktop
     state: present
+  register: docker_cask
+  failed_when: false
+
+- name: Explain how to finish the Docker Desktop install
+  debug:
+    msg: >-
+      Docker Desktop needs root to link its helper binaries into /usr/local/bin,
+      but sudo has no terminal to ask for your password. Run "sudo -v" first and
+      then re-run, e.g.  sudo -v && ansible-playbook playbook.yml --tags docker
+  when: "'sudo' in (docker_cask.msg | default(''))"
 
 - name: Install docker CLI tooling
   community.general.homebrew:

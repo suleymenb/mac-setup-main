@@ -17,6 +17,20 @@ if ! xcode-select -p >/dev/null 2>&1; then
   exit 1
 fi
 
+# --- 0b) Prime sudo ---
+# Some casks (Docker Desktop) symlink helper binaries into /usr/local/bin and
+# shell out to sudo themselves. Ansible gives them no terminal to prompt on, so
+# we cache the credential up front and refresh it for as long as this script runs.
+log "Asking for your macOS password once (needed for Docker Desktop and Homebrew)"
+sudo -v
+while true; do
+  sudo -n true
+  sleep 60
+  kill -0 "$$" 2>/dev/null || exit
+done 2>/dev/null &
+SUDO_KEEPALIVE_PID=$!
+trap 'kill "$SUDO_KEEPALIVE_PID" 2>/dev/null || true' EXIT
+
 # --- 1) Homebrew ---
 log "Checking Homebrew"
 if ! command -v brew >/dev/null 2>&1; then
