@@ -1,46 +1,27 @@
 ---
-# Package names live in group_vars/all.yml.
+# Thin wrapper. The real work lives in tasks.yml.
+#
+# Wrapping the role in block/rescue means a failure here is recorded and the
+# play continues with the next role, instead of aborting everything after it.
+# Without this, one broken role hides the state of every role that follows —
+# which is exactly how the system role silently never ran.
+- name: kubernetes
+  block:
+    - name: Run the kubernetes tasks
+      include_tasks: tasks.yml
 
-- name: Install core kubernetes CLI tooling
-  community.general.homebrew:
-    name: "{{ kubernetes_formulae }}"
-    state: present
-    update_homebrew: false
+  rescue:
+    - name: Record that the kubernetes role failed
+      set_fact:
+        mac_failed_roles: >-
+          {{ (mac_failed_roles | default([])) + [{
+               'role': 'kubernetes',
+               'task': ansible_failed_task.name | default('unknown task'),
+               'msg': (ansible_failed_result.msg | default('no message')) | string | truncate(200)
+             }] }}
 
-- name: Install optional kubernetes tooling
-  community.general.homebrew:
-    name: "{{ item }}"
-    state: present
-    update_homebrew: false
-  loop: "{{ kubernetes_formulae_optional }}"
-  register: k8s_optional
-  failed_when: false
-
-- name: Report optional kubernetes tools that were skipped
-  debug:
-    msg: "Skipped {{ item.item }} — {{ item.msg | default('unknown error') }}"
-  loop: "{{ k8s_optional.results | default([]) }}"
-  loop_control:
-    label: "{{ item.item }}"
-  when: "'Error' in (item.msg | default(''))"
-
-- name: Ensure kubectl completion is loaded in zsh
-  blockinfile:
-    path: "{{ ansible_facts.env.HOME }}/.zshrc"
-    marker: "# {mark} ANSIBLE_KUBECTL"
-    create: true
-    block: |
-      command -v kubectl >/dev/null 2>&1 && source <(kubectl completion zsh)
-      alias k='kubectl'
-
-- name: Verify kubectl is runnable
-  command: kubectl version --client
-  environment:
-    PATH: "{{ brew_bin_paths }}:{{ ansible_facts.env.PATH }}"
-  register: kubectl_version
-  changed_when: false
-  failed_when: false
-
-- name: Show kubectl version
-  debug:
-    msg: "{{ kubectl_version.stdout_lines | first | default('kubectl not reporting a version') }}"
+    - name: Warn that kubernetes failed but the run continues
+      debug:
+        msg: >-
+          Role 'kubernetes' FAILED at "{{ ansible_failed_task.name | default('unknown task') }}".
+          Continuing with the remaining roles; full report at the end.

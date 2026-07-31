@@ -1,38 +1,27 @@
 ---
-# Package lists live in group_vars/all.yml — do not add names here.
+# Thin wrapper. The real work lives in tasks.yml.
+#
+# Wrapping the role in block/rescue means a failure here is recorded and the
+# play continues with the next role, instead of aborting everything after it.
+# Without this, one broken role hides the state of every role that follows —
+# which is exactly how the system role silently never ran.
+- name: homebrew
+  block:
+    - name: Run the homebrew tasks
+      include_tasks: tasks.yml
 
-- name: Ensure Homebrew is installed (best-effort)
-  shell: |
-    set -euo pipefail
-    if ! command -v brew >/dev/null 2>&1; then
-      /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-    fi
-  args:
-    executable: /bin/bash
-  changed_when: false
+  rescue:
+    - name: Record that the homebrew role failed
+      set_fact:
+        mac_failed_roles: >-
+          {{ (mac_failed_roles | default([])) + [{
+               'role': 'homebrew',
+               'task': ansible_failed_task.name | default('unknown task'),
+               'msg': (ansible_failed_result.msg | default('no message')) | string | truncate(200)
+             }] }}
 
-- name: Install brew formulae
-  community.general.homebrew:
-    name: "{{ brew_formulae }}"
-    state: present
-    update_homebrew: false
-
-# The "_absent" lists may be empty or commented out entirely — default([])
-# keeps that from blowing up with an undefined-variable error.
-- name: Remove formulae that are no longer wanted
-  community.general.homebrew:
-    name: "{{ brew_formulae_absent | default([]) }}"
-    state: absent
-  when: (brew_formulae_absent | default([])) | length > 0
-
-- name: Install brew casks
-  community.general.homebrew_cask:
-    name: "{{ brew_casks }}"
-    state: present
-
-- name: Remove casks that are no longer wanted
-  community.general.homebrew_cask:
-    name: "{{ item }}"
-    state: absent
-  loop: "{{ brew_casks_absent | default([]) }}"
-  failed_when: false
+    - name: Warn that homebrew failed but the run continues
+      debug:
+        msg: >-
+          Role 'homebrew' FAILED at "{{ ansible_failed_task.name | default('unknown task') }}".
+          Continuing with the remaining roles; full report at the end.

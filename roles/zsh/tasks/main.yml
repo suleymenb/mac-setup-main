@@ -1,115 +1,27 @@
-# Oh My Zsh Installation
-- name: Install Oh My Zsh if missing
-  shell: |
-    set -euo pipefail
-    if [ ! -d "$HOME/.oh-my-zsh" ]; then
-      RUNZSH=no CHSH=no KEEP_ZSHRC=yes sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
-    fi
-  args:
-    executable: /bin/bash
-  changed_when: false
+---
+# Thin wrapper. The real work lives in tasks.yml.
+#
+# Wrapping the role in block/rescue means a failure here is recorded and the
+# play continues with the next role, instead of aborting everything after it.
+# Without this, one broken role hides the state of every role that follows —
+# which is exactly how the system role silently never ran.
+- name: zsh
+  block:
+    - name: Run the zsh tasks
+      include_tasks: tasks.yml
 
-# Oh My Zsh Themes
-- name: Ensure powerlevel10k theme present (Oh My Zsh custom theme)
-  git:
-    repo: https://github.com/romkatv/powerlevel10k.git
-    dest: "{{ ansible_facts.env.HOME }}/.oh-my-zsh/custom/themes/powerlevel10k"
-    depth: 1
-    version: master
+  rescue:
+    - name: Record that the zsh role failed
+      set_fact:
+        mac_failed_roles: >-
+          {{ (mac_failed_roles | default([])) + [{
+               'role': 'zsh',
+               'task': ansible_failed_task.name | default('unknown task'),
+               'msg': (ansible_failed_result.msg | default('no message')) | string | truncate(200)
+             }] }}
 
-# Oh My Zsh Plugins
-- name: Ensure zsh-autosuggestions present
-  git:
-    repo: https://github.com/zsh-users/zsh-autosuggestions.git
-    dest: "{{ ansible_facts.env.HOME }}/.oh-my-zsh/custom/plugins/zsh-autosuggestions"
-    depth: 1
-    version: master
-
-- name: Ensure zsh-syntax-highlighting present
-  git:
-    repo: https://github.com/zsh-users/zsh-syntax-highlighting.git
-    dest: "{{ ansible_facts.env.HOME }}/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting"
-    depth: 1
-    version: master
-
-# ZSH Configuration
-- name: Ensure ZSH env var is set
-  lineinfile:
-    path: "{{ ansible_facts.env.HOME }}/.zshrc"
-    regexp: "^export ZSH="
-    line: 'export ZSH="$HOME/.oh-my-zsh"'
-    create: true
-
-- name: Set ZSH_THEME to powerlevel10k (Oh My Zsh theme path)
-  lineinfile:
-    path: "{{ ansible_facts.env.HOME }}/.zshrc"
-    regexp: "^ZSH_THEME="
-    line: 'ZSH_THEME="powerlevel10k/powerlevel10k"'
-    create: true
-
-- name: Set plugins list (matches your .zshrc)
-  lineinfile:
-    path: "{{ ansible_facts.env.HOME }}/.zshrc"
-    regexp: '^plugins=\('
-    line: "plugins=(git sudo zsh-autosuggestions zsh-syntax-highlighting)"
-    create: true
-
-- name: Ensure oh-my-zsh is sourced
-  lineinfile:
-    path: "{{ ansible_facts.env.HOME }}/.zshrc"
-    regexp: '^source \$ZSH/oh-my-zsh\.sh$'
-    line: "source $ZSH/oh-my-zsh.sh"
-    insertafter: "^plugins="
-    create: true
-
-- name: Apply OMZ update + completion settings (your .zshrc)
-  blockinfile:
-    path: "{{ ansible_facts.env.HOME }}/.zshrc"
-    marker: "# {mark} ANSIBLE_OMZ_SETTINGS"
-    create: true
-    block: |
-      zstyle ':omz:update' mode auto      # update automatically without asking
-      zstyle ':omz:update' frequency 1
-      COMPLETION_WAITING_DOTS="true"
-
-- name: Remove cargo bin from PATH (rust is no longer installed)
-  lineinfile:
-    path: "{{ ansible_facts.env.HOME }}/.zshrc"
-    regexp: '^export PATH="\$HOME/\.cargo/bin:\$PATH"'
-    state: absent
-
-# ZSH Aliases & Functions
-- name: Add aliases block (your .zshrc)
-  blockinfile:
-    path: "{{ ansible_facts.env.HOME }}/.zshrc"
-    marker: "# {mark} ANSIBLE_ALIASES"
-    create: true
-    block: |
-      alias rz='source ~/.zshrc'
-      alias ls="eza --icons --group-directories-first"
-      alias ll="eza -lah --icons --group-directories-first"
-
-# ZSH Integrations
-- name: Ensure p10k config is sourced (your .zshrc)
-  lineinfile:
-    path: "{{ ansible_facts.env.HOME }}/.zshrc"
-    regexp: '^\[\[ ! -f ~\/\.p10k\.zsh \]\] \|\| source ~\/\.p10k\.zsh$'
-    line: "[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh"
-    create: true
-
-- name: Remove legacy direct powerlevel10k source (conflicts with OMZ theme)
-  lineinfile:
-    path: "{{ ansible_facts.env.HOME }}/.zshrc"
-    regexp: '^source ~\/powerlevel10k\/powerlevel10k\.zsh-theme$'
-    state: absent
-
-- name: Manage brew autoupdates line (exactly like your .zshrc)
-  blockinfile:
-    path: "{{ ansible_facts.env.HOME }}/.zshrc"
-    marker: "# {mark} ANSIBLE_BREW_AUToupdates"
-    create: true
-    block: |
-      { brew update && brew upgrade && brew cleanup; } >/dev/null 2>&1
-  tags: [brew_autoupdates]
-
-# Terminal Tools (eza, dust, vim, mc) are installed by the homebrew role.
+    - name: Warn that zsh failed but the run continues
+      debug:
+        msg: >-
+          Role 'zsh' FAILED at "{{ ansible_failed_task.name | default('unknown task') }}".
+          Continuing with the remaining roles; full report at the end.

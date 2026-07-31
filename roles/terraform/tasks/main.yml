@@ -1,80 +1,27 @@
 ---
-# Taps and package names live in group_vars/all.yml.
-# The preflight role has already tapped and validated everything by now.
+# Thin wrapper. The real work lives in tasks.yml.
+#
+# Wrapping the role in block/rescue means a failure here is recorded and the
+# play continues with the next role, instead of aborting everything after it.
+# Without this, one broken role hides the state of every role that follows —
+# which is exactly how the system role silently never ran.
+- name: terraform
+  block:
+    - name: Run the terraform tasks
+      include_tasks: tasks.yml
 
-# There used to be a blanket "brew unlink terraform" here. It was a trap:
-# `brew list --formula` prints the keg name "terraform" whether it came from
-# homebrew-core or from hashicorp/tap. So on every run after the first it
-# unlinked the terraform we had just installed, and `brew install` then said
-# "already installed" without relinking — leaving no binary on PATH.
-# Linking is handled below instead, after the install, and only when needed.
+  rescue:
+    - name: Record that the terraform role failed
+      set_fact:
+        mac_failed_roles: >-
+          {{ (mac_failed_roles | default([])) + [{
+               'role': 'terraform',
+               'task': ansible_failed_task.name | default('unknown task'),
+               'msg': (ansible_failed_result.msg | default('no message')) | string | truncate(200)
+             }] }}
 
-- name: Install terraform tooling
-  community.general.homebrew:
-    name: "{{ terraform_formulae }}"
-    state: present
-    update_homebrew: false
-
-- name: Install optional terraform tooling
-  community.general.homebrew:
-    name: "{{ item }}"
-    state: present
-    update_homebrew: false
-  loop: "{{ terraform_formulae_optional }}"
-  register: tf_optional
-  failed_when: false
-
-- name: Report optional terraform tools that were skipped
-  debug:
-    msg: "Skipped {{ item.item }} — {{ item.msg | default('unknown error') }}"
-  loop: "{{ tf_optional.results | default([]) }}"
-  loop_control:
-    label: "{{ item.item }}"
-  when: "'Error' in (item.msg | default(''))"
-
-# Ansible's command module does not go through a shell, so it only sees the
-# PATH it inherited — which on a fresh machine has no Homebrew in it yet.
-- name: Check whether terraform is runnable
-  command: terraform version
-  environment:
-    PATH: "{{ brew_bin_paths }}:{{ ansible_facts.env.PATH }}"
-  register: terraform_check
-  changed_when: false
-  failed_when: false
-
-# Self-healing: an unlinked keg is the usual cause, so link it and look again
-# rather than telling the user to go fix it themselves.
-- name: Link terraform if it is installed but not on PATH
-  command: brew link --overwrite hashicorp/tap/terraform
-  environment:
-    PATH: "{{ brew_bin_paths }}:{{ ansible_facts.env.PATH }}"
-  when: terraform_check.rc != 0
-  register: terraform_link
-  failed_when: false
-
-- name: Re-check terraform after linking
-  command: terraform version
-  environment:
-    PATH: "{{ brew_bin_paths }}:{{ ansible_facts.env.PATH }}"
-  register: terraform_version
-  changed_when: false
-  failed_when: false
-  when: terraform_check.rc != 0
-
-- name: Settle on whichever check produced a version
-  set_fact:
-    terraform_result: "{{ terraform_version if (terraform_check.rc != 0) else terraform_check }}"
-
-- name: Fail with a useful message if terraform is still not runnable
-  fail:
-    msg: |
-      terraform is installed but not reachable on PATH, and linking it did not help.
-      Try manually:
-        brew link --overwrite hashicorp/tap/terraform
-        eval "$(/opt/homebrew/bin/brew shellenv)"
-      brew link said: {{ terraform_link.stderr | default('(not attempted)') | trim }}
-  when: terraform_result.rc | default(1) != 0
-
-- name: Show terraform version
-  debug:
-    msg: "{{ terraform_result.stdout_lines | first }}"
+    - name: Warn that terraform failed but the run continues
+      debug:
+        msg: >-
+          Role 'terraform' FAILED at "{{ ansible_failed_task.name | default('unknown task') }}".
+          Continuing with the remaining roles; full report at the end.

@@ -184,7 +184,34 @@ It is tagged `always`, so it runs even with `--tags docker`.
 
 ---
 
-## 4b. Verifying the Installation
+## 4b. One Failing Role No Longer Hides the Rest
+
+Every role is wrapped in `block`/`rescue` (see any `roles/*/tasks/main.yml`).
+If a role fails, the failure is recorded and the play continues with the next
+role. At the end you get one report:
+
+```
+2 role(s) failed:
+  - terraform — at task "Verify terraform is runnable"
+    terraform is installed but not reachable on PATH
+  - docker — at task "Fail loudly if Docker Desktop is still missing"
+    Docker Desktop did not install
+
+Re-run just the failed ones, for example:
+  ansible-playbook playbook.yml --tags terraform,docker
+```
+
+The run still exits non-zero, so scripts and CI notice — but only after every
+role has had its turn.
+
+Why this matters: Ansible normally aborts the whole play on a fatal error. With
+`system` deliberately running last, any earlier failure meant it silently never
+ran at all. `preflight` is intentionally *not* wrapped — if the environment is
+broken there is no point continuing.
+
+---
+
+## 4c. Verifying the Installation
 
 `bootstrap.sh` runs this automatically at the end, but you can run it any time:
 

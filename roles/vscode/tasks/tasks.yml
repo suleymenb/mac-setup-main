@@ -1,0 +1,76 @@
+---
+# Extension IDs and theme settings live in group_vars/all.yml.
+# An ID is "<publisher>.<name>" as found in the extension's package.json.
+
+- name: Locate the VS Code CLI
+  stat:
+    path: "{{ item }}"
+  loop:
+    - /opt/homebrew/bin/code
+    - /usr/local/bin/code
+    - /Applications/Visual Studio Code.app/Contents/Resources/app/bin/code
+  register: code_cli_candidates
+
+- name: Remember which code CLI to use
+  set_fact:
+    code_bin: "{{ (code_cli_candidates.results | selectattr('stat.exists') | map(attribute='stat.path') | list | first) | default('') }}"
+
+- name: Skip the role if VS Code is not installed
+  debug:
+    msg: >-
+      VS Code CLI not found — run the homebrew role first
+      (ansible-playbook playbook.yml --tags homebrew)
+  when: code_bin | length == 0
+
+- name: Install VS Code extensions
+  command: "{{ code_bin }} --install-extension {{ item }} --force"
+  environment:
+    PATH: "{{ brew_bin_paths }}:{{ ansible_facts.env.PATH }}"
+  loop: "{{ vscode_extensions }}"
+  register: vscode_ext
+  when: code_bin | length > 0
+  changed_when: "'successfully installed' in (vscode_ext.stdout | default(''))"
+
+# --- settings.json -----------------------------------------------------------
+# Merge rather than overwrite, so existing user settings survive.
+
+- name: Ensure the VS Code User directory exists
+  file:
+    path: "{{ ansible_facts.env.HOME }}/Library/Application Support/Code/User"
+    state: directory
+    mode: "0755"
+  when: code_bin | length > 0
+
+- name: Load existing settings.json
+  block:
+    - name: Check for settings.json
+      stat:
+        path: "{{ ansible_facts.env.HOME }}/Library/Application Support/Code/User/settings.json"
+      register: vscode_settings_stat
+
+    - name: Read settings.json
+      slurp:
+        src: "{{ ansible_facts.env.HOME }}/Library/Application Support/Code/User/settings.json"
+      register: vscode_settings_raw
+      when: vscode_settings_stat.stat.exists
+
+    - name: Parse settings.json
+      set_fact:
+        vscode_settings_current: >-
+          {{ (vscode_settings_raw.content | b64decode | from_json)
+             if vscode_settings_stat.stat.exists else {} }}
+  rescue:
+    # settings.json may contain comments (JSONC), which from_json rejects.
+    # Start from an empty dict; the copy task below keeps a .bak of the original.
+    - name: Could not parse settings.json — starting fresh
+      set_fact:
+        vscode_settings_current: {}
+  when: code_bin | length > 0
+
+- name: Apply theme settings
+  copy:
+    content: "{{ vscode_settings_current | combine(vscode_theme_settings) | to_nice_json(indent=2) }}"
+    dest: "{{ ansible_facts.env.HOME }}/Library/Application Support/Code/User/settings.json"
+    backup: true
+    mode: "0644"
+  when: code_bin | length > 0

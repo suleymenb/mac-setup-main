@@ -1,0 +1,46 @@
+---
+# Package names live in group_vars/all.yml.
+
+- name: Install core kubernetes CLI tooling
+  community.general.homebrew:
+    name: "{{ kubernetes_formulae }}"
+    state: present
+    update_homebrew: false
+
+- name: Install optional kubernetes tooling
+  community.general.homebrew:
+    name: "{{ item }}"
+    state: present
+    update_homebrew: false
+  loop: "{{ kubernetes_formulae_optional }}"
+  register: k8s_optional
+  failed_when: false
+
+- name: Report optional kubernetes tools that were skipped
+  debug:
+    msg: "Skipped {{ item.item }} — {{ item.msg | default('unknown error') }}"
+  loop: "{{ k8s_optional.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when: "'Error' in (item.msg | default(''))"
+
+- name: Ensure kubectl completion is loaded in zsh
+  blockinfile:
+    path: "{{ ansible_facts.env.HOME }}/.zshrc"
+    marker: "# {mark} ANSIBLE_KUBECTL"
+    create: true
+    block: |
+      command -v kubectl >/dev/null 2>&1 && source <(kubectl completion zsh)
+      alias k='kubectl'
+
+- name: Verify kubectl is runnable
+  command: kubectl version --client
+  environment:
+    PATH: "{{ brew_bin_paths }}:{{ ansible_facts.env.PATH }}"
+  register: kubectl_version
+  changed_when: false
+  failed_when: false
+
+- name: Show kubectl version
+  debug:
+    msg: "{{ kubectl_version.stdout_lines | first | default('kubectl not reporting a version') }}"

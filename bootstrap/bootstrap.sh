@@ -9,6 +9,43 @@ set -euo pipefail
 
 log() { printf "\n==> %s\n" "$1"; }
 
+# --- 0a) Which checkout am I actually running? -------------------------------
+# Running `git clone` from inside an existing clone nests the repo inside
+# itself. You then edit one copy and run another, and nothing you change seems
+# to take effect. Refuse to start rather than let that happen silently.
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO_NAME="$(basename "$REPO_ROOT")"
+
+# Count how many times this directory's own name appears in its full path.
+NEST_COUNT="$(tr '/' '\n' <<<"$REPO_ROOT" | grep -cx "$REPO_NAME" || true)"
+
+if [[ "$NEST_COUNT" -gt 1 ]]; then
+  cat >&2 <<EOF
+
+==> ERROR: this checkout is nested inside another copy of itself.
+
+    $REPO_ROOT
+
+    "$REPO_NAME" appears $NEST_COUNT times in that path, which means you very
+    likely ran "git clone" from inside an existing clone. Editing one copy and
+    running another is a good way to lose an afternoon.
+
+    Clean it up:
+      rm -rf ~/$REPO_NAME
+      cd ~ && git clone https://github.com/suleymenb/$REPO_NAME.git
+
+    Always clone from your home directory — git creates the subfolder for you.
+
+EOF
+  exit 1
+fi
+
+log "Running from: $REPO_ROOT"
+if git -C "$REPO_ROOT" rev-parse --git-dir >/dev/null 2>&1; then
+  log "Commit:      $(git -C "$REPO_ROOT" log --oneline -1 2>/dev/null)"
+  log "Remote:      $(git -C "$REPO_ROOT" remote get-url origin 2>/dev/null || echo 'none')"
+fi
+
 # --- 0) Xcode Command Line Tools ---
 log "Checking Xcode Command Line Tools"
 if ! xcode-select -p >/dev/null 2>&1; then

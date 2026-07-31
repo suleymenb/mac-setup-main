@@ -1,122 +1,27 @@
 ---
-# macOS system processes and settings.
+# Thin wrapper. The real work lives in tasks.yml.
 #
-# This role runs LAST, on purpose: it restarts Dock and Finder, so it should
-# only happen once everything else is installed and settled.
-#
-# Settings are driven from group_vars/all.yml — add them there, not here.
-# Restarts go through handlers, so Dock/Finder are only killed when something
-# actually changed. Running this role twice in a row should restart nothing.
+# Wrapping the role in block/rescue means a failure here is recorded and the
+# play continues with the next role, instead of aborting everything after it.
+# Without this, one broken role hides the state of every role that follows —
+# which is exactly how the system role silently never ran.
+- name: system
+  block:
+    - name: Run the system tasks
+      include_tasks: tasks.yml
 
-# --- Dock --------------------------------------------------------------------
+  rescue:
+    - name: Record that the system role failed
+      set_fact:
+        mac_failed_roles: >-
+          {{ (mac_failed_roles | default([])) + [{
+               'role': 'system',
+               'task': ansible_failed_task.name | default('unknown task'),
+               'msg': (ansible_failed_result.msg | default('no message')) | string | truncate(200)
+             }] }}
 
-- name: Count apps currently pinned to the Dock
-  shell: |
-    set -o pipefail
-    defaults read com.apple.dock persistent-apps 2>/dev/null | grep -c 'tile-data' || true
-  args:
-    executable: /bin/bash
-  register: dock_pinned_count
-  changed_when: false
-
-- name: Clear all pinned apps from the Dock
-  command: defaults write com.apple.dock persistent-apps -array
-  when:
-    - system_dock_clear_persistent_apps | default(false)
-    - (dock_pinned_count.stdout | trim | int) > 0
-  notify: Restart Dock
-
-- name: Report the Dock is already clear
-  debug:
-    msg: "Dock already has no pinned apps — nothing to do."
-  when:
-    - system_dock_clear_persistent_apps | default(false)
-    - (dock_pinned_count.stdout | trim | int) == 0
-
-# --- generic defaults --------------------------------------------------------
-# Anything added to system_defaults in group_vars/all.yml is applied here.
-# osx_defaults compares the current value first, so it is properly idempotent
-# and reports changed only when it really writes something.
-
-- name: Apply macOS defaults
-  community.general.osx_defaults:
-    domain: "{{ item.domain }}"
-    key: "{{ item.key }}"
-    type: "{{ item.type }}"
-    value: "{{ item.value }}"
-    state: present
-  loop: "{{ system_defaults | default([]) }}"
-  loop_control:
-    label: "{{ item.domain }} {{ item.key }}"
-  register: defaults_applied
-  notify:
-    - Restart Dock
-    - Restart Finder
-
-# --- appearance (last) -------------------------------------------------------
-# Deliberately the final block in the role, and the role itself runs last.
-
-- name: Set the icon appearance theme
-  community.general.osx_defaults:
-    domain: NSGlobalDomain
-    key: AppleIconAppearanceTheme
-    type: string
-    value: "{{ system_icon_appearance_theme }}"
-    state: present
-  when: system_icon_appearance_theme | default('') | length > 0
-  notify:
-    - Restart Dock
-    - Restart Finder
-    - Restart SystemUIServer
-
-# Writing AppleInterfaceStyle needs no special permission and is what actually
-# persists across logins.
-- name: Enable dark mode
-  community.general.osx_defaults:
-    domain: NSGlobalDomain
-    key: AppleInterfaceStyle
-    type: string
-    value: Dark
-    state: present
-  when: system_dark_mode | default(false)
-  register: dark_mode
-  notify:
-    - Restart Dock
-    - Restart Finder
-    - Restart SystemUIServer
-
-# Off by default, and for good reason.
-#
-# This asks System Events for macOS Automation permission. There is no UI to
-# grant that during an Ansible run, so the AppleEvent blocks until it times out
-# (-1712). Two things that do NOT save you here:
-#   - `failed_when: false` — a `timeout:` is enforced by the executor and marks
-#     the task failed before failed_when is ever evaluated.
-#   - `timeout: 15` — that *is* the thing that fails the task.
-#
-# So it runs fire-and-forget instead: async with poll 0 means Ansible starts it
-# and never waits for a result, which is the only way it cannot stall the play.
-# The defaults write above is what actually persists the setting.
-- name: Apply dark mode to the running session (fire and forget)
-  command: >-
-    osascript -e 'tell application "System Events" to tell appearance preferences
-    to set dark mode to true'
-  async: 30
-  poll: 0
-  changed_when: false
-  when:
-    - system_dark_mode | default(false)
-    - system_dark_mode_live_apply | default(false)
-    - dark_mode is changed
-
-- name: Note how dark mode takes full effect
-  debug:
-    msg: >-
-      Dark mode is written to AppleInterfaceStyle. Dock, Finder and
-      SystemUIServer restart below; already-running apps pick it up after a
-      logout. Set system_dark_mode_live_apply to true only if you have granted
-      Automation permission to your terminal.
-  when:
-    - system_dark_mode | default(false)
-    - dark_mode is changed
-    - not (system_dark_mode_live_apply | default(false))
+    - name: Warn that system failed but the run continues
+      debug:
+        msg: >-
+          Role 'system' FAILED at "{{ ansible_failed_task.name | default('unknown task') }}".
+          Continuing with the remaining roles; full report at the end.

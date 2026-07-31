@@ -37,3 +37,35 @@
     # should be installed and settled before it runs.
     - role: system
       tags: [system]
+
+  # post_tasks run after every role, including after a role failed — because
+  # each role catches its own failure in a rescue block.
+  post_tasks:
+    - name: All roles completed successfully
+      debug:
+        msg: "All roles completed without errors."
+      when: (mac_failed_roles | default([])) | length == 0
+      tags: always
+
+    - name: Report every role that failed
+      debug:
+        msg: |-
+          {{ (mac_failed_roles | default([])) | length }} role(s) failed:
+          {% for f in mac_failed_roles | default([]) %}
+            - {{ f.role }} — at task "{{ f.task }}"
+              {{ f.msg }}
+          {% endfor %}
+          Re-run just the failed ones, for example:
+            ansible-playbook playbook.yml --tags {{ (mac_failed_roles | default([])) | map(attribute='role') | join(',') }}
+      when: (mac_failed_roles | default([])) | length > 0
+      tags: always
+
+    # Still exit non-zero so CI and scripts notice, but only after the report
+    # above has been printed and every other role has had its turn.
+    - name: Fail the run because one or more roles failed
+      fail:
+        msg: >-
+          {{ (mac_failed_roles | default([])) | map(attribute='role') | join(', ') }}
+          failed — see the report above.
+      when: (mac_failed_roles | default([])) | length > 0
+      tags: always
