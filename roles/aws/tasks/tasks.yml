@@ -24,10 +24,9 @@
     label: "{{ item.item }}"
   when: "'Error' in (item.msg | default(''))"
 
-# session-manager-plugin ships as a .pkg, which macOS installs through
-# /usr/sbin/installer — that needs root. Homebrew shells out to sudo itself and
-# Ansible gives it no terminal, so the password has to arrive via SUDO_ASKPASS,
-# exactly like Docker Desktop.
+# aws_casks is empty by default. If you add a .pkg-based cask here, note that
+# macOS installs those through /usr/sbin/installer, which needs root — hence
+# the sudo_password, same as Docker Desktop.
 - name: Install AWS casks
   community.general.homebrew_cask:
     name: "{{ item }}"
@@ -53,7 +52,7 @@
       These AWS casks are not installed:
         {{ aws_cask_present.results | selectattr('rc', 'ne', 0) | map(attribute='item') | list | join('\n  ') }}
 
-      session-manager-plugin is a .pkg and needs root to install. Fix it with:
+      If it is a .pkg cask it needs root. Fix it with:
         sudo -v && ansible-playbook playbook.yml --tags aws
       or type your macOS password at the playbook prompt.
   when: aws_cask_present.results | selectattr('rc', 'ne', 0) | list | length > 0

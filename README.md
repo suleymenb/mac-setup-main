@@ -39,7 +39,7 @@ reach every app.
 | **Infra** | terraform (`hashicorp/tap`), terraform-docs, tflint |
 | **Containers** | Docker Desktop, docker-compose, lazydocker, dive |
 | **Kubernetes** | kubernetes-cli, helm, k9s, kubectx, minikube |
-| **AWS** | awscli, eksctl, aws-sam-cli, aws-vault, session-manager-plugin |
+| **AWS** | awscli, eksctl, aws-sam-cli, aws-vault |
 | **Apps** | iTerm2, Rectangle, Stats, Visual Studio Code, Sublime Text, Firefox, VLC |
 | **Fonts** | JetBrains Mono, Meslo LG Nerd Font |
 | **Shell** | Oh My Zsh, powerlevel10k, autosuggestions, syntax-highlighting |

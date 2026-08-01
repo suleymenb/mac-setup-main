@@ -247,7 +247,8 @@ for f in $(list_or aws_formulae_optional "eksctl aws-sam-cli aws-vault"); do
   fi
 done
 
-for c in $(list_or aws_casks "session-manager-plugin"); do
+# aws_casks is empty by default; loop is a no-op unless you add one
+for c in $(list_or aws_casks ""); do
   check_cask "$c"
 done
 

@@ -63,8 +63,11 @@ aws_formulae_optional:
   - aws-sam-cli     # serverless
   - aws-vault       # credential storage in the macOS keychain
 
-aws_casks:
-  - session-manager-plugin   # aws ssm start-session
+# No AWS casks. session-manager-plugin was here but it ships as a .pkg, which
+# needs root to install — not worth the sudo dance. Install it by hand if you
+# ever need `aws ssm start-session`:
+#   brew install --cask session-manager-plugin
+aws_casks: []
 
 # --- terraform ---------------------------------------------------------------
 # terraform is not in homebrew-core (Business Source License), hence the tap.
