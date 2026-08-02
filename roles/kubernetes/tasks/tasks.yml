@@ -24,14 +24,19 @@
     label: "{{ item.item }}"
   when: "'Error' in (item.msg | default(''))"
 
-- name: Ensure kubectl completion is loaded in zsh
+# The kubectl completion block used to be written here. That was wrong: this
+# role runs before the zsh role, so the block landed ABOVE
+# "source $ZSH/oh-my-zsh.sh" — and Oh My Zsh is what runs compinit, which
+# defines compdef. kubectl's completion calls compdef, so it failed with
+# "command not found: compdef" on every new shell.
+#
+# The zsh role now owns it and appends it after Oh My Zsh. This task only
+# cleans up the old, badly placed block.
+- name: Remove the misplaced kubectl block from .zshrc
   blockinfile:
     path: "{{ ansible_facts.env.HOME }}/.zshrc"
     marker: "# {mark} ANSIBLE_KUBECTL"
-    create: true
-    block: |
-      command -v kubectl >/dev/null 2>&1 && source <(kubectl completion zsh)
-      alias k='kubectl'
+    state: absent
 
 - name: Verify kubectl is runnable
   command: kubectl version --client

@@ -112,4 +112,25 @@
       { brew update && brew upgrade && brew cleanup; } >/dev/null 2>&1
   tags: [brew_autoupdates]
 
+# kubectl completion — must come AFTER "source $ZSH/oh-my-zsh.sh", because
+# Oh My Zsh is what runs compinit, and compinit is what defines compdef.
+# kubectl's completion script calls compdef, so loading it any earlier prints
+# "command not found: compdef" on every new shell. Appending here puts it at
+# the end of .zshrc, which is after the Oh My Zsh source line.
+#
+# The compdef guard is belt and braces: if the ordering ever breaks again, the
+# completion is silently skipped instead of spraying errors — which also keeps
+# Powerlevel10k's instant prompt happy, since it warns about ANY console output
+# during zsh startup.
+- name: Ensure kubectl completion is loaded after Oh My Zsh
+  blockinfile:
+    path: "{{ ansible_facts.env.HOME }}/.zshrc"
+    marker: "# {mark} ANSIBLE_KUBECTL"
+    create: true
+    block: |
+      if (( $+commands[kubectl] )) && (( $+functions[compdef] )); then
+        source <(kubectl completion zsh)
+      fi
+      alias k='kubectl'
+
 # Terminal Tools (eza, dust, vim, mc) are installed by the homebrew role.
