@@ -414,6 +414,27 @@ else
   bad "Dark mode enabled" "AppleInterfaceStyle is not Dark"
 fi
 
+iterm_plist="$HOME/Library/Preferences/com.googlecode.iterm2.plist"
+if [[ -f "$iterm_plist" ]]; then
+  iterm_font=$(python3 - "$iterm_plist" <<'PY' 2>/dev/null
+import plistlib, sys
+try:
+    data = plistlib.load(open(sys.argv[1], 'rb'))
+except Exception:
+    raise SystemExit(0)
+fonts = {p.get('Normal Font', '') for p in data.get('New Bookmarks', [])}
+print(', '.join(sorted(f for f in fonts if f)))
+PY
+)
+  if [[ "$iterm_font" == *Nerd* || "$iterm_font" == *"NF"* ]]; then
+    ok "iTerm2 uses a Nerd Font" "$iterm_font"
+  else
+    bad "iTerm2 uses a Nerd Font" "${iterm_font:-unset} — p10k icons will not render"
+  fi
+else
+  warn "iTerm2 preferences" "not created yet — launch iTerm2 once"
+fi
+
 if command -v defaultbrowser >/dev/null 2>&1; then
   cur_browser=$(defaultbrowser 2>/dev/null | grep '^\* ' | tr -d '* ')
   if [[ "$cur_browser" == "firefox" ]]; then

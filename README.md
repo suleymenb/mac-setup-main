@@ -44,7 +44,7 @@ reach every app.
 | **Fonts** | JetBrains Mono, Meslo LG Nerd Font |
 | **Shell** | Oh My Zsh, powerlevel10k, autosuggestions, syntax-highlighting |
 | **VS Code** | The Digital Life theme, Material Icon Theme (both activated) |
-| **System** | Clears the Dock, dark mode, dark app icons, natural scrolling off, Firefox as default browser |
+| **System** | Clears the Dock, dark mode, dark app icons, natural scrolling off, Firefox as default browser, iTerm2 Nerd Font |
 
 Aliases: `rz` (reload zshrc), `ls`/`ll` (eza), `k` (kubectl), plus kubectl completion.
 
@@ -167,6 +167,19 @@ sudo -v && ansible-playbook playbook.yml
 
 `-K` does not work here — it does not populate `ansible_become_password` for
 this module.
+
+**Powerlevel10k shows boxes or question marks instead of icons**
+Installing the font cask only puts files in `~/Library/Fonts` — the terminal
+still has to select one. The system role sets iTerm2's font to
+`MesloLGSNerdFont-Regular`, but **only while iTerm2 is closed**: iTerm2 rewrites
+its entire preferences file when it quits and would throw the change away.
+
+```bash
+# quit iTerm2 first, then from Terminal.app:
+ansible-playbook playbook.yml --tags system
+```
+
+Font in `system_iterm_font`. Alternatively `p10k configure` walks you through it.
 
 **Firefox did not become the default browser**
 macOS does not allow changing this silently — it shows a confirmation dialog you

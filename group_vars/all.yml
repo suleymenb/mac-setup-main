@@ -116,6 +116,16 @@ vscode_theme_settings:
 # Downloads/Trash side. Runs only when the Dock actually has pinned apps.
 system_dock_clear_persistent_apps: true
 
+# iTerm2 font. Installing font-meslo-lg-nerd-font only puts the files in
+# ~/Library/Fonts — the terminal still has to *select* one, otherwise
+# Powerlevel10k renders boxes and question marks instead of icons.
+#
+# This is the PostScript name from the Homebrew cask, not p10k's own download:
+#   cask font-meslo-lg-nerd-font  ->  MesloLGSNerdFont-Regular
+#   p10k's manual download        ->  MesloLGS NF
+# Both carry the same glyphs. Set to "" to leave the font alone.
+system_iterm_font: "MesloLGSNerdFont-Regular 13"
+
 # Default browser. Uses the `defaultbrowser` CLI (installed via brew_formulae).
 # Set to "" to leave the default browser alone.
 # NOTE: on recent macOS this still pops a confirmation dialog you must click —

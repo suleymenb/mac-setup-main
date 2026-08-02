@@ -33,6 +33,85 @@
     - system_dock_clear_persistent_apps | default(false)
     - (dock_pinned_count.stdout | trim | int) == 0
 
+# --- iTerm2 font -------------------------------------------------------------
+# The font cask only drops files into ~/Library/Fonts. iTerm2 has to actually
+# select one or Powerlevel10k shows boxes instead of icons.
+#
+# Two hard constraints, both handled below:
+#  1. iTerm2 rewrites its whole plist when it quits. Editing the file while it
+#     runs means your change is thrown away the moment you close it — so this
+#     is skipped entirely while iTerm2 is running.
+#  2. The font lives in a nested array ("New Bookmarks" -> per-profile dict),
+#     which `defaults write` cannot address. plistlib handles it properly.
+
+- name: Check whether iTerm2 is running
+  command: pgrep -x iTerm2
+  register: iterm_running
+  changed_when: false
+  failed_when: false
+  when: system_iterm_font | default('') | length > 0
+
+- name: Check for the iTerm2 preferences file
+  stat:
+    path: "{{ ansible_facts.env.HOME }}/Library/Preferences/com.googlecode.iterm2.plist"
+  register: iterm_plist
+  when: system_iterm_font | default('') | length > 0
+
+- name: Set the iTerm2 font on every profile
+  shell: |
+    python3 - "$HOME/Library/Preferences/com.googlecode.iterm2.plist" "{{ system_iterm_font }}" <<'PY'
+    import plistlib, sys
+    path, font = sys.argv[1], sys.argv[2]
+    with open(path, 'rb') as fh:
+        data = plistlib.load(fh)
+    profiles = data.get('New Bookmarks', [])
+    if not profiles:
+        print('NOPROFILES')
+        raise SystemExit(0)
+    changed = False
+    for profile in profiles:
+        for key in ('Normal Font', 'Non Ascii Font'):
+            if profile.get(key) != font:
+                profile[key] = font
+                changed = True
+    if changed:
+        with open(path, 'wb') as fh:
+            plistlib.dump(data, fh)
+        print('CHANGED %d profile(s)' % len(profiles))
+    else:
+        print('UNCHANGED')
+    PY
+  args:
+    executable: /bin/bash
+  register: iterm_font_set
+  changed_when: "'CHANGED' in (iterm_font_set.stdout | default(''))"
+  failed_when: false
+  when:
+    - system_iterm_font | default('') | length > 0
+    - iterm_plist.stat.exists | default(false)
+    - iterm_running.rc | default(0) != 0
+
+- name: Flush the preferences cache so iTerm2 sees the new font
+  command: killall cfprefsd
+  changed_when: false
+  failed_when: false
+  when: iterm_font_set is changed
+
+- name: Explain why the iTerm2 font was not set
+  debug:
+    msg: >-
+      {% if iterm_running.rc | default(1) == 0 %}
+      iTerm2 is running, so its font was left alone — it rewrites its whole
+      preferences file when it quits and would discard the change. Quit iTerm2
+      and run: ansible-playbook playbook.yml --tags system
+      {% else %}
+      iTerm2 has no preferences file yet. Launch it once, quit it, then run:
+      ansible-playbook playbook.yml --tags system
+      {% endif %}
+  when:
+    - system_iterm_font | default('') | length > 0
+    - (iterm_running.rc | default(1) == 0) or not (iterm_plist.stat.exists | default(false))
+
 # --- default browser ---------------------------------------------------------
 # Apple does not allow changing the default browser silently: macOS pops a
 # confirmation dialog you have to click. The `defaultbrowser` CLI triggers that
