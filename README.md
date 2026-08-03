@@ -20,7 +20,7 @@ Wait for it to finish before continuing. Everything else is installed for you.
 ## Quick start
 
 ```bash
-cd ~ && git clone https://github.com/suleymenb/mac-setup-main.git && cd mac-setup-main && chmod +x bootstrap/bootstrap.sh verify.sh && ./bootstrap/bootstrap.sh
+cd ~ && git clone https://github.com/suleymenb/mac-setup-ansible.git && cd mac-setup-ansible && chmod +x bootstrap/bootstrap.sh verify.sh && ./bootstrap/bootstrap.sh
 ```
 
 Clone from your home directory — `git` creates the subfolder. Cloning from
