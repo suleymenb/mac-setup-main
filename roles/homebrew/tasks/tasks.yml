@@ -25,10 +25,15 @@
     state: absent
   when: (brew_formulae_absent | default([])) | length > 0
 
+# --adopt makes Homebrew take ownership of an app that is already in
+# /Applications instead of refusing with "It seems there is already an App at
+# ...". That happens whenever an app was installed by hand, or when a previous
+# cask install was interrupted after the app landed but before it was recorded.
 - name: Install brew casks
   community.general.homebrew_cask:
     name: "{{ brew_casks }}"
     state: present
+    install_options: adopt
 
 - name: Remove casks that are no longer wanted
   community.general.homebrew_cask:

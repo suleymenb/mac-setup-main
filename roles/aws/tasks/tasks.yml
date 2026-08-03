@@ -31,6 +31,7 @@
   community.general.homebrew_cask:
     name: "{{ item }}"
     state: present
+    install_options: adopt
     sudo_password: "{{ mac_sudo_password if (mac_sudo_password | default('') | length > 0) else omit }}"
   loop: "{{ aws_casks | default([]) }}"
   register: aws_cask_install

@@ -93,6 +93,29 @@
     state: present
   loop: "{{ brew_taps }}"
 
+# Newer Homebrew requires third-party taps to be explicitly trusted. Until they
+# are, it silently *ignores* every formula and cask from them — so terraform and
+# tflint would look installed-but-missing with no obvious cause.
+# `brew trust` is recent; on older Homebrew the command does not exist, which is
+# harmless because those versions do not enforce trust either.
+- name: Trust the third-party taps
+  command: "brew trust {{ brew_taps | join(' ') }}"
+  environment:
+    PATH: "{{ brew_bin_paths }}:{{ ansible_facts.env.PATH }}"
+  register: tap_trust
+  changed_when: "'Trusted' in (tap_trust.stdout | default('')) or tap_trust.rc == 0"
+  failed_when: false
+  when: brew_taps | length > 0
+
+- name: Note if this Homebrew has no tap-trust support
+  debug:
+    msg: >-
+      "brew trust" is not available in this Homebrew version — no action needed,
+      tap trust is only enforced by newer releases.
+  when:
+    - brew_taps | length > 0
+    - "'Unknown command' in (tap_trust.stderr | default('')) or 'unknown command' in (tap_trust.stderr | default(''))"
+
 - name: Validate every required formula name resolves
   command: "brew info --formula {{ item }}"
   environment:

@@ -17,6 +17,7 @@
   community.general.homebrew_cask:
     name: "{{ docker_cask }}"
     state: present
+    install_options: adopt
     sudo_password: "{{ mac_sudo_password if (mac_sudo_password | default('') | length > 0) else omit }}"
   when: not docker_app.stat.exists
   register: docker_cask_install
