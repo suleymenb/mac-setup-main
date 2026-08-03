@@ -93,7 +93,7 @@ docker_formulae_optional:
 docker_containers:
   - name: excalidraw
     image: excalidraw/excalidraw:latest
-    ports: ["5000:80"]
+    ports: ["5001:80"]
     url: http://localhost:5000
 
 # --- kubernetes --------------------------------------------------------------
