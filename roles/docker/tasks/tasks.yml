@@ -74,3 +74,74 @@
       Docker Desktop is installed but the CLI is not on PATH yet.
       Open Docker Desktop once from Applications to finish setup.
   when: docker_cli.rc != 0
+
+# --- long-running containers -------------------------------------------------
+# Containers are defined in docker_containers in group_vars/all.yml.
+# The daemon has to actually be up; on a fresh machine Docker Desktop needs one
+# manual launch first, so this whole section is skipped rather than failing.
+
+- name: Check whether the Docker daemon is running
+  command: docker info
+  environment:
+    PATH: "{{ brew_bin_paths }}:{{ ansible_facts.env.PATH }}"
+  register: docker_daemon
+  changed_when: false
+  failed_when: false
+
+- name: Note that containers were skipped because Docker is not running
+  debug:
+    msg: >-
+      Docker Desktop is not running, so {{ docker_containers | default([]) | length }}
+      container(s) were skipped. Start Docker Desktop, then run:
+      ansible-playbook playbook.yml --tags docker
+  when:
+    - (docker_containers | default([])) | length > 0
+    - docker_daemon.rc != 0
+
+# Deliberately plain docker commands rather than community.docker: that module
+# needs an extra collection AND the Python docker SDK injected into the pipx
+# venv that runs Ansible. Two more things to break, for a `docker run`.
+#
+# Idempotent in three states: already running -> nothing; exists but stopped ->
+# start; absent -> create. `docker ps -q` avoids --format, whose Go template
+# braces would collide with Jinja.
+- name: Start the configured containers
+  shell: |
+    set -uo pipefail
+    name={{ item.name | quote }}
+    if [ -n "$(docker ps -q -f name=^${name}$)" ]; then
+      echo "UNCHANGED already running"
+    elif [ -n "$(docker ps -aq -f name=^${name}$)" ]; then
+      docker start "$name" >/dev/null && echo "CHANGED started existing container"
+    else
+      docker run -d --name "$name" --restart {{ item.restart_policy | default('unless-stopped') | quote }} {% for p in item.ports %}-p {{ p | quote }} {% endfor %}{{ item.image | quote }} >/dev/null && echo "CHANGED created and started"
+    fi
+  args:
+    executable: /bin/bash
+  environment:
+    PATH: "{{ brew_bin_paths }}:{{ ansible_facts.env.PATH }}"
+  loop: "{{ docker_containers | default([]) }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: container_start
+  changed_when: "'CHANGED' in stdout"
+  failed_when: false
+  when: docker_daemon.rc == 0
+
+- name: Report containers that did not start
+  debug:
+    msg: "Could not start {{ item.item.name }} — {{ item.stderr | default('unknown error') | trim }}"
+  loop: "{{ container_start.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.name | default('?') }}"
+  when:
+    - docker_daemon.rc == 0
+    - item.rc | default(0) != 0
+
+- name: Show where the containers are reachable
+  debug:
+    msg: "{{ item.name }} -> {{ item.url | default('http://localhost') }}"
+  loop: "{{ docker_containers | default([]) }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: docker_daemon.rc == 0

@@ -88,6 +88,14 @@ docker_formulae_optional:
   - lazydocker
   - dive
 
+# Long-running containers to keep started. Each entry maps onto `docker run`.
+# restart_policy keeps them alive across reboots once Docker Desktop starts.
+docker_containers:
+  - name: excalidraw
+    image: excalidraw/excalidraw:latest
+    ports: ["5000:80"]
+    url: http://localhost:5000
+
 # --- kubernetes --------------------------------------------------------------
 # "kubectl" is only an alias; kubernetes-cli is the real formula name.
 kubernetes_formulae:

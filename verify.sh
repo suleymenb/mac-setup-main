@@ -204,6 +204,24 @@ if command -v docker >/dev/null 2>&1; then
   ok "docker CLI" "$(docker --version 2>/dev/null)"
   if docker info >/dev/null 2>&1; then
     ok "docker daemon running"
+
+    # containers listed in docker_containers in group_vars/all.yml
+    if (( USE_VARS )); then
+      while IFS='|' read -r cname curl; do
+        [[ -z "$cname" ]] && continue
+        if [[ -n "$(docker ps -q -f "name=^${cname}$" 2>/dev/null)" ]]; then
+          ok "container $cname" "$curl"
+        else
+          bad "container $cname" "not running — ansible-playbook playbook.yml --tags docker"
+        fi
+      done < <(python3 - "$VARS_FILE" <<'PY' 2>/dev/null
+import sys, yaml
+data = yaml.safe_load(open(sys.argv[1])) or {}
+for c in data.get('docker_containers') or []:
+    print("%s|%s" % (c.get('name',''), c.get('url','')))
+PY
+)
+    fi
   else
     warn "docker daemon running" "daemon not up — launch Docker Desktop"
   fi

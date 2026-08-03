@@ -38,6 +38,7 @@ reach every app.
 | **CLI** | eza, dust, vim, mc, ansible-lint |
 | **Infra** | terraform (`hashicorp/tap`), terraform-docs, tflint |
 | **Containers** | Docker Desktop, docker-compose, lazydocker, dive |
+| **Running** | Excalidraw at http://localhost:5000 |
 | **Kubernetes** | kubernetes-cli, helm, k9s, kubectx, minikube |
 | **AWS** | awscli, eksctl, aws-sam-cli, aws-vault |
 | **Apps** | iTerm2, Rectangle, Stats, Visual Studio Code, Sublime Text, Firefox, VLC |
@@ -75,6 +76,19 @@ ansible-playbook playbook.yml --tags homebrew
 
 Preflight checks the name exists before anything installs, and `verify.sh`
 starts checking it automatically.
+
+Adding a container:
+
+```yaml
+docker_containers:
+  - name: excalidraw
+    image: excalidraw/excalidraw:latest
+    ports: ["5000:80"]
+    url: http://localhost:5000
+```
+
+Started with `restart_policy: unless-stopped`, so it comes back after a reboot
+once Docker Desktop is up. `verify.sh` checks each one is actually running.
 
 Adding a macOS setting:
 
