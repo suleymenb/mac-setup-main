@@ -45,6 +45,7 @@ brew_casks:
   - stats
   - visual-studio-code
   - sublime-text
+  - obsidian
   - firefox
   - vlc
   - font-jetbrains-mono

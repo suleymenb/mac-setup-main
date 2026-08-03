@@ -41,7 +41,7 @@ reach every app.
 | **Running** | Excalidraw at http://localhost:5000 |
 | **Kubernetes** | kubernetes-cli, helm, k9s, kubectx, minikube |
 | **AWS** | awscli, eksctl, aws-sam-cli, aws-vault |
-| **Apps** | iTerm2, Rectangle, Stats, Visual Studio Code, Sublime Text, Firefox, VLC |
+| **Apps** | iTerm2, Rectangle, Stats, Visual Studio Code, Sublime Text, Obsidian, Firefox, VLC |
 | **Fonts** | JetBrains Mono, Meslo LG Nerd Font |
 | **Shell** | Oh My Zsh, powerlevel10k, autosuggestions, syntax-highlighting |
 | **VS Code** | The Digital Life theme, Material Icon Theme (both activated) |

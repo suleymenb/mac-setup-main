@@ -317,7 +317,7 @@ else
 fi
 
 # App bundle names differ from cask tokens, hence the explicit list
-for app in "iTerm" "Rectangle" "Stats" "Visual Studio Code" "Sublime Text" "Firefox" "VLC"; do
+for app in "iTerm" "Rectangle" "Stats" "Visual Studio Code" "Sublime Text" "Obsidian" "Firefox" "VLC"; do
   if [[ -d "/Applications/${app}.app" ]]; then
     ok "${app}.app present"
   else
