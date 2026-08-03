@@ -78,8 +78,15 @@
 
 # --- long-running containers -------------------------------------------------
 # Containers are defined in docker_containers in group_vars/all.yml.
-# The daemon has to actually be up; on a fresh machine Docker Desktop needs one
-# manual launch first, so this whole section is skipped rather than failing.
+#
+# Installing the cask does not start anything: without Docker Desktop running
+# there is no /var/run/docker.sock and every docker command fails with
+# "failed to connect to the docker API". So rather than skipping, start it and
+# wait for the socket.
+#
+# The very first launch still needs you: Docker Desktop shows a licence dialog
+# and installs a privileged helper that asks for your password. After that this
+# is fully automatic.
 
 - name: Check whether the Docker daemon is running
   command: docker info
@@ -89,15 +96,43 @@
   changed_when: false
   failed_when: false
 
-- name: Note that containers were skipped because Docker is not running
-  debug:
-    msg: >-
-      Docker Desktop is not running, so {{ docker_containers | default([]) | length }}
-      container(s) were skipped. Start Docker Desktop, then run:
-      ansible-playbook playbook.yml --tags docker
+- name: Start Docker Desktop
+  command: open -a Docker
+  register: docker_launch
+  changed_when: true
+  failed_when: false
   when:
     - (docker_containers | default([])) | length > 0
     - docker_daemon.rc != 0
+    - docker_app_after.stat.exists
+
+- name: Wait for the Docker daemon to accept connections
+  command: docker info
+  environment:
+    PATH: "{{ brew_bin_paths }}:{{ ansible_facts.env.PATH }}"
+  register: docker_wait
+  until: docker_wait.rc == 0
+  retries: 30
+  delay: 2
+  changed_when: false
+  failed_when: false
+  when: docker_launch is not skipped
+
+- name: Record whether the daemon is usable
+  set_fact:
+    docker_up: "{{ (docker_daemon.rc == 0) or (docker_wait.rc | default(1) == 0) }}"
+
+- name: Note that containers were skipped because Docker never came up
+  debug:
+    msg: >-
+      Docker Desktop did not start within 60 seconds, so
+      {{ docker_containers | default([]) | length }} container(s) were skipped.
+      If this is the first launch, accept the licence dialog and enter your
+      password when asked, then run:
+      ansible-playbook playbook.yml --tags docker
+  when:
+    - (docker_containers | default([])) | length > 0
+    - not docker_up
 
 # Deliberately plain docker commands rather than community.docker: that module
 # needs an extra collection AND the Python docker SDK injected into the pipx
@@ -127,7 +162,7 @@
   register: container_start
   changed_when: "'CHANGED' in stdout"
   failed_when: false
-  when: docker_daemon.rc == 0
+  when: docker_up
 
 - name: Report containers that did not start
   debug:
@@ -136,7 +171,7 @@
   loop_control:
     label: "{{ item.item.name | default('?') }}"
   when:
-    - docker_daemon.rc == 0
+    - docker_up
     - item.rc | default(0) != 0
 
 - name: Show where the containers are reachable
@@ -145,4 +180,4 @@
   loop: "{{ docker_containers | default([]) }}"
   loop_control:
     label: "{{ item.name }}"
-  when: docker_daemon.rc == 0
+  when: docker_up
