@@ -273,6 +273,7 @@ roles/
 - [ ] CI on a macOS runner, running the playbook twice to prove idempotency
 - [ ] Move the `brew update` out of `.zshrc` into a launchd job
 - [ ] Retries on network-bound tasks
+- [ ] Fix zsh icons not loading in ternimal correctly. (iTerm2 problem? Font?)
 
 ## License
 
